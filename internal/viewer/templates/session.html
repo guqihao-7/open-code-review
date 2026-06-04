@@ -39,6 +39,12 @@
             <div class="token-value">{{.Session.TokenUsage.RequestCount}}</div>
             <div class="token-label">LLM Requests</div>
         </div>
+        {{if .Session.Summary.LLMFailures}}
+        <div class="token-item">
+            <div class="token-value badge-error">{{.Session.Summary.LLMFailures}}</div>
+            <div class="token-label">LLM Failures</div>
+        </div>
+        {{end}}
     </div>
     {{with .Session.TokenUsage.FileTokenBreakdown}}
     <table class="token-table">

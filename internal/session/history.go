@@ -6,6 +6,7 @@ package session
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/open-code-review/open-code-review/internal/llm"
@@ -33,6 +34,7 @@ type SessionHistory struct {
 	EndTime      time.Time
 	persist      *jsonlWriter
 	FileSessions map[string]*FileSession
+	llmFailures  int64
 }
 
 // FileSession represents the conversation records for a single file subtask.
@@ -131,10 +133,11 @@ func (sh *SessionHistory) Finalize() {
 	for fp := range sh.FileSessions {
 		filesReviewed = append(filesReviewed, fp)
 	}
+	failures := atomic.LoadInt64(&sh.llmFailures)
 	sh.mu.Unlock()
 
 	if p != nil {
-		p.WriteSessionEnd(duration, filesReviewed)
+		p.WriteSessionEnd(duration, filesReviewed, failures)
 	}
 }
 
@@ -198,8 +201,7 @@ func copyMessagesForJSON(msgs []llm.Message) any {
 // and writes an llm_response record to the JSONL stream.
 func (tr *TaskRecord) SetResponse(resp *llm.ChatResponse, duration time.Duration) {
 	if resp == nil || len(resp.Choices) == 0 {
-		tr.Error = "empty response"
-		tr.Duration = duration
+		tr.SetError(fmt.Errorf("empty response"), duration)
 		return
 	}
 	choice := resp.Choices[0]
@@ -243,10 +245,23 @@ func (tr *TaskRecord) SetResponse(resp *llm.ChatResponse, duration time.Duration
 	}
 }
 
-// SetError records an error for this task record.
+// SetError records an error for this task record, writes an llm_error entry to
+// the JSONL stream, and increments the session-level LLM failure counter.
 func (tr *TaskRecord) SetError(err error, duration time.Duration) {
 	tr.Error = err.Error()
 	tr.Duration = duration
+
+	if fs := tr.fileSession; fs != nil {
+		if p := fs.session.persist; p != nil {
+			p.WriteLLMError(fs.FilePath, tr.Type, tr.RequestNo, err.Error(), duration)
+		}
+		atomic.AddInt64(&fs.session.llmFailures, 1)
+	}
+}
+
+// LLMFailures returns the total number of LLM request failures recorded during this session.
+func (sh *SessionHistory) LLMFailures() int64 {
+	return atomic.LoadInt64(&sh.llmFailures)
 }
 
 // AddToolResult appends a tool call result to this task record and writes a

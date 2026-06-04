@@ -83,6 +83,7 @@ type SessionSummary struct {
 	FilesReviewed []string
 	DurationSec   float64
 	FileCount     int
+	LLMFailures   int
 }
 
 // ListSessions returns lightweight summaries for all sessions in a repo subdir.
@@ -165,6 +166,9 @@ func peekSession(path string) (SessionSummary, error) {
 							summary.FilesReviewed = append(summary.FilesReviewed, s)
 						}
 					}
+				}
+				if f, ok := rec["llm_failures"].(float64); ok {
+					summary.LLMFailures = int(f)
 				}
 			}
 		}
@@ -346,6 +350,25 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 				}
 			}
 
+		case "llm_error":
+			fp, _ := rec["filePath"].(string)
+			tt, _ := rec["taskType"].(string)
+			errStr, _ := rec["error"].(string)
+			durationMs := int64(0)
+			if d, ok := rec["duration_ms"].(float64); ok {
+				durationMs = int64(d)
+			}
+
+			fg := fileIndex[fp]
+			if fg != nil {
+				cards := fg.Tasks[TaskType(tt)]
+				if len(cards) > 0 && cards[len(cards)-1].Error == "" {
+					card := cards[len(cards)-1]
+					card.Error = errStr
+					card.DurationMs = durationMs
+				}
+			}
+
 		case "tool_call":
 			result, _ := rec["result"].(string)
 			okVal := true
@@ -388,6 +411,9 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 				}
 			}
 			vs.Summary.FileCount = len(vs.Summary.FilesReviewed)
+			if f, ok := rec["llm_failures"].(float64); ok {
+				vs.Summary.LLMFailures = int(f)
+			}
 		}
 	}
 

@@ -184,6 +184,29 @@ func (jw *jsonlWriter) WriteLLMResponse(filePath string, taskType TaskType, cont
 	return uuid
 }
 
+// WriteLLMError writes an llm_error entry recording a failed LLM request.
+func (jw *jsonlWriter) WriteLLMError(filePath string, taskType TaskType, requestNo int, errorMsg string, duration time.Duration) string {
+	uuid := generateUUID()
+
+	jw.mu.Lock()
+	defer jw.mu.Unlock()
+	rec := map[string]any{
+		"uuid":        uuid,
+		"parentUuid":  jw.lastUUID,
+		"type":        "llm_error",
+		"sessionId":   jw.sessionID,
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		"filePath":    filePath,
+		"taskType":    string(taskType),
+		"request_no":  requestNo,
+		"error":       errorMsg,
+		"duration_ms": duration.Milliseconds(),
+	}
+	jw.writeRecordLocked(rec)
+	jw.lastUUID = uuid
+	return uuid
+}
+
 // WriteToolCall writes a tool call result entry.
 func (jw *jsonlWriter) WriteToolCall(filePath string, taskType TaskType, toolName, arguments, result string, ok bool, duration time.Duration) string {
 	uuid := generateUUID()
@@ -210,7 +233,7 @@ func (jw *jsonlWriter) WriteToolCall(filePath string, taskType TaskType, toolNam
 }
 
 // WriteSessionEnd writes the final session_end summary record and closes the file.
-func (jw *jsonlWriter) WriteSessionEnd(duration time.Duration, filesReviewed []string) {
+func (jw *jsonlWriter) WriteSessionEnd(duration time.Duration, filesReviewed []string, llmFailures int64) {
 	uuid := generateUUID()
 
 	jw.mu.Lock()
@@ -223,6 +246,7 @@ func (jw *jsonlWriter) WriteSessionEnd(duration time.Duration, filesReviewed []s
 		"timestamp":        time.Now().UTC().Format(time.RFC3339),
 		"files_reviewed":   filesReviewed,
 		"duration_seconds": duration.Seconds(),
+		"llm_failures":     llmFailures,
 	}
 	jw.writeRecordLocked(rec)
 	jw.lastUUID = uuid
