@@ -87,7 +87,11 @@ func tryOCREnv() (ResolvedEndpoint, bool, error) {
 
 	var authHeader string
 	if protocol == "anthropic" {
-		authHeader = normalizeAuthHeader(os.Getenv(envOCRLLMAuthHeader))
+		var err error
+		authHeader, err = NormalizeAuthHeader(os.Getenv(envOCRLLMAuthHeader))
+		if err != nil {
+			return ResolvedEndpoint{}, false, fmt.Errorf("OCR environment: %w", err)
+		}
 		if authHeader == "" {
 			authHeader = defaultAuthHeader(protocol)
 		}
@@ -141,7 +145,11 @@ func tryOCRConfig(path string) (ResolvedEndpoint, bool, error) {
 
 	var authHeader string
 	if protocol == "anthropic" {
-		authHeader = normalizeAuthHeader(cfg.Llm.AuthHeader)
+		var err error
+		authHeader, err = NormalizeAuthHeader(cfg.Llm.AuthHeader)
+		if err != nil {
+			return ResolvedEndpoint{}, false, fmt.Errorf("OCR config file: %w", err)
+		}
 		if authHeader == "" {
 			authHeader = defaultAuthHeader(protocol)
 		}
@@ -256,15 +264,20 @@ func defaultAuthHeader(protocol string) string {
 	return ""
 }
 
-func normalizeAuthHeader(header string) string {
+// NormalizeAuthHeader normalizes an auth header value to a canonical form.
+// It returns an error for unrecognized values.
+func NormalizeAuthHeader(header string) (string, error) {
 	header = strings.TrimSpace(header)
+	if header == "" {
+		return "", nil
+	}
 	switch strings.ToLower(header) {
 	case "x-api-key":
-		return "x-api-key"
+		return "x-api-key", nil
 	case "authorization", "bearer":
-		return "authorization"
+		return "authorization", nil
 	default:
-		return header
+		return "", fmt.Errorf("unsupported auth_header value %q; expected \"x-api-key\" or \"authorization\"", header)
 	}
 }
 

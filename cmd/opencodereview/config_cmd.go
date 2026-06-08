@@ -6,7 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
+
+	"github.com/open-code-review/open-code-review/internal/llm"
 )
 
 // Default config file location: ~/.opencodereview/config.json
@@ -132,7 +133,11 @@ func setConfigValue(cfg *Config, key, value string) error {
 	case "llm.auth_token", "llm.AuthToken":
 		cfg.Llm.AuthToken = value
 	case "llm.auth_header", "llm.AuthHeader":
-		cfg.Llm.AuthHeader = normalizeConfigAuthHeader(value)
+		normalized, err := llm.NormalizeAuthHeader(value)
+		if err != nil {
+			return err
+		}
+		cfg.Llm.AuthHeader = normalized
 	case "llm.model", "llm.Model":
 		cfg.Llm.Model = value
 	case "llm.use_anthropic", "llm.UseAnthropic":
@@ -173,18 +178,6 @@ func setConfigValue(cfg *Config, key, value string) error {
 		return fmt.Errorf("unknown config key: %s\nSupported keys: llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging", key)
 	}
 	return nil
-}
-
-func normalizeConfigAuthHeader(header string) string {
-	header = strings.TrimSpace(header)
-	switch strings.ToLower(header) {
-	case "x-api-key":
-		return "x-api-key"
-	case "authorization", "bearer":
-		return "authorization"
-	default:
-		return header
-	}
 }
 
 func (c *Config) ensureTelemetry() {

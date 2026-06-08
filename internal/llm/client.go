@@ -182,7 +182,7 @@ type ClientConfig struct {
 	URL        string         // Full API endpoint URL
 	APIKey     string         // Bearer token / API key
 	Model      string         // Default model override
-	AuthHeader string         // Anthropic auth header: "x-api-key" or "authorization"
+	AuthHeader string         // Auth header name: "x-api-key", "authorization", or empty for protocol default
 	Timeout    time.Duration  // Request timeout
 	ExtraBody  map[string]any // Vendor-specific fields merged into every request body
 }
@@ -484,7 +484,7 @@ func NewAnthropicClient(cfg ClientConfig) *AnthropicClient {
 	}
 
 	sdkBaseURL := strings.TrimSuffix(strings.TrimRight(cfg.URL, "/"), "/v1/messages")
-	authHeader := normalizeAuthHeader(cfg.AuthHeader)
+	authHeader, _ := NormalizeAuthHeader(cfg.AuthHeader)
 	if authHeader == "" {
 		authHeader = "authorization"
 	}
