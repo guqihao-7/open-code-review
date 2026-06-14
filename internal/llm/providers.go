@@ -105,6 +105,7 @@ var registry = []Provider{
 			"MiniMax-M2.1",
 			"MiniMax-M2.1-highspeed",
 			"MiniMax-M2",
+			"M2-her",
 		},
 	},
 }
