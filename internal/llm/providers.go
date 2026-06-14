@@ -90,6 +90,25 @@ var registry = []Provider{
 			"mimo-v2-omni",
 		},
 	},
+	{
+		Name:        "kimi",
+		DisplayName: "Kimi API",
+		Protocol:    "openai",
+		BaseURL:     "https://api.moonshot.cn/v1",
+		EnvVar:      "KIMI_API_KEY",
+		Models: []string{
+			"kimi-k2.5",
+			"kimi-k2.6",
+			"kimi-k2.7-code",
+			"moonshot-v1-8k",
+			"moonshot-v1-32k",
+			"moonshot-v1-128k",
+			"moonshot-v1-auto",
+			"moonshot-v1-8k-vision-preview",
+			"moonshot-v1-32k-vision-preview",
+			"moonshot-v1-128k-vision-preview",
+		},
+	},
 }
 
 var registryMap map[string]Provider
