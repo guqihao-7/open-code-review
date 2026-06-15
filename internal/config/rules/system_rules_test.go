@@ -295,6 +295,120 @@ func TestNewResolver_CustomRuleOverridesDefault(t *testing.T) {
 	}
 }
 
+func TestNewResolverWithOptions_MergeSystemRuleDisabledByDefault(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	dir := t.TempDir()
+	ocrDir := filepath.Join(dir, ".opencodereview")
+	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleJSON := `{"rules":[{"path":"**/*.go","rule":"project-go-rule"}]}`
+	if err := os.WriteFile(filepath.Join(ocrDir, "rule.json"), []byte(ruleJSON), 0o644); err != nil {
+		t.Fatalf("write rule.json: %v", err)
+	}
+
+	resolver, _, err := NewResolverWithOptions(dir, "", ResolverOptions{})
+	if err != nil {
+		t.Fatalf("NewResolverWithOptions: %v", err)
+	}
+
+	got := resolver.Resolve("main.go")
+	if got != "project-go-rule" {
+		t.Fatalf("expected only project rule when merge is disabled, got %q", got)
+	}
+	if strings.Contains(got, "System Rule:") || strings.Contains(got, "User Rule:") {
+		t.Fatalf("did not expect merged rule labels, got %q", got)
+	}
+}
+
+func TestNewResolverWithOptions_MergeSystemRule(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	dir := t.TempDir()
+	ocrDir := filepath.Join(dir, ".opencodereview")
+	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleJSON := `{"rules":[{"path":"**/*.go","rule":"project-go-rule"}]}`
+	if err := os.WriteFile(filepath.Join(ocrDir, "rule.json"), []byte(ruleJSON), 0o644); err != nil {
+		t.Fatalf("write rule.json: %v", err)
+	}
+
+	resolver, _, err := NewResolverWithOptions(dir, "", ResolverOptions{
+		MergeSystemRule: true,
+	})
+	if err != nil {
+		t.Fatalf("NewResolverWithOptions: %v", err)
+	}
+
+	got := resolver.Resolve("main.go")
+	if !strings.Contains(got, "System Rule: ") {
+		t.Fatalf("expected merged system rule label, got %q", truncate(got, 120))
+	}
+	if !strings.Contains(got, "Correctness") {
+		t.Fatalf("expected merged Go system rule, got %q", truncate(got, 120))
+	}
+	if !strings.Contains(got, "\nUser Rule: project-go-rule") {
+		t.Fatalf("expected merged project rule, got %q", truncate(got, 120))
+	}
+}
+
+func TestNewResolverWithOptions_MergeSystemRuleKeepsRulePriority(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	repoDir := t.TempDir()
+	ocrDir := filepath.Join(repoDir, ".opencodereview")
+	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	projectRule := `{"rules":[{"path":"**/*.go","rule":"project-go-rule"}]}`
+	if err := os.WriteFile(filepath.Join(ocrDir, "rule.json"), []byte(projectRule), 0o644); err != nil {
+		t.Fatalf("write rule.json: %v", err)
+	}
+
+	customDir := t.TempDir()
+	customRule := `{"rules":[{"path":"main.go","rule":"custom-main-rule"}]}`
+	customPath := filepath.Join(customDir, "custom_rules.json")
+	if err := os.WriteFile(customPath, []byte(customRule), 0o644); err != nil {
+		t.Fatalf("write custom rule: %v", err)
+	}
+
+	resolver, _, err := NewResolverWithOptions(repoDir, customPath, ResolverOptions{
+		MergeSystemRule: true,
+	})
+	if err != nil {
+		t.Fatalf("NewResolverWithOptions: %v", err)
+	}
+
+	got := resolver.Resolve("main.go")
+	if !strings.Contains(got, "\nUser Rule: custom-main-rule") {
+		t.Fatalf("expected custom rule to win, got %q", truncate(got, 120))
+	}
+	if strings.Contains(got, "project-go-rule") {
+		t.Fatalf("project rule should not be merged when custom rule matches first, got %q", truncate(got, 120))
+	}
+}
+
+func TestNewResolverWithOptions_MergeSystemRuleFallsBackToSystemOnly(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	resolver, _, err := NewResolverWithOptions(t.TempDir(), "", ResolverOptions{
+		MergeSystemRule: true,
+	})
+	if err != nil {
+		t.Fatalf("NewResolverWithOptions: %v", err)
+	}
+
+	got := resolver.Resolve("main.go")
+	if strings.Contains(got, "System Rule:") || strings.Contains(got, "User Rule:") {
+		t.Fatalf("expected plain system rule when no user rule matches, got %q", truncate(got, 120))
+	}
+	if !strings.Contains(got, "Correctness") {
+		t.Fatalf("expected Go system rule, got %q", truncate(got, 120))
+	}
+}
+
 func TestNewResolver_CustomOverridesProject(t *testing.T) {
 	// Setup --rule file (highest priority)
 	customDir := t.TempDir()
