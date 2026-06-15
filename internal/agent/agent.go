@@ -119,10 +119,6 @@ type Args struct {
 	// Session is an optional session history instance for collecting conversation records.
 	// When nil, a default one is created automatically with git branch auto-detected from repoDir.
 	Session *session.SessionHistory
-
-	// MergeSystemRule keeps the matched system checklist in the prompt when
-	// a custom/project/global rule also matches the reviewed file.
-	MergeSystemRule bool
 }
 
 // AgentWarning describes a non-fatal warning recorded during review.

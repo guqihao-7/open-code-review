@@ -130,7 +130,6 @@ func runReview(args []string) error {
 		Model:                 model,
 		Background:            opts.background,
 		GitRunner:             gitRunner,
-		MergeSystemRule:       opts.mergeSystemRule,
 	})
 
 	// Silence progress output during execution; restore before Summary in agent mode.
