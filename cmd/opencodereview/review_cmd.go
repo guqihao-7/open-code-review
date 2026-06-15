@@ -59,7 +59,9 @@ func runReview(args []string) error {
 		}
 	}
 
-	resolver, fileFilter, err := rules.NewResolver(repoDir, opts.rulePath)
+	resolver, fileFilter, err := rules.NewResolverWithOptions(repoDir, opts.rulePath, rules.ResolverOptions{
+		MergeSystemRule: opts.mergeSystemRule,
+	})
 	if err != nil {
 		return fmt.Errorf("load rules: %w", err)
 	}
@@ -128,6 +130,7 @@ func runReview(args []string) error {
 		Model:                 model,
 		Background:            opts.background,
 		GitRunner:             gitRunner,
+		MergeSystemRule:       opts.mergeSystemRule,
 	})
 
 	// Silence progress output during execution; restore before Summary in agent mode.

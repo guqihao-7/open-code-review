@@ -95,21 +95,22 @@ func expandShortFlags(args []string, shortMap map[string]string) []string {
 // --- review subcommand options ---
 
 type reviewOptions struct {
-	toolConfigPath string
-	rulePath       string
-	repoDir        string
-	from           string
-	to             string
-	commit         string
-	outputFormat   string
-	audience       string // --audience: "human" (default) or "agent"
-	background     string // --background: optional requirement context
-	concurrency    int
-	perFileTimeout int
-	maxTools       int
-	maxGitProcs    int
-	preview        bool
-	showHelp       bool
+	toolConfigPath  string
+	rulePath        string
+	repoDir         string
+	from            string
+	to              string
+	commit          string
+	outputFormat    string
+	audience        string // --audience: "human" (default) or "agent"
+	background      string // --background: optional requirement context
+	concurrency     int
+	perFileTimeout  int
+	maxTools        int
+	maxGitProcs     int
+	preview         bool
+	showHelp        bool
+	mergeSystemRule bool
 }
 
 func parseReviewFlags(args []string) (reviewOptions, error) {
@@ -131,6 +132,7 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 	a.IntVar(&opts.maxTools, "max-tools", 0, "max tool call rounds per file (0 = template default; min 10)")
 	a.IntVar(&opts.maxGitProcs, "max-git-procs", 16, "max concurrent git subprocesses")
 	a.BoolVarP(&opts.preview, "preview", "p", false, "preview which files will be reviewed without running the LLM")
+	a.BoolVar(&opts.mergeSystemRule, "merge-sys-rule", false, "prepend system rules before matched user rules")
 
 	if err := a.Parse(args); err != nil {
 		return opts, fmt.Errorf("parse flags: %w", err)

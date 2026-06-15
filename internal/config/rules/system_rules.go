@@ -235,10 +235,19 @@ func (f *FileFilter) IsUserIncluded(path string) bool {
 
 // composedResolver implements Resolver with layered priority.
 type composedResolver struct {
-	custom  *ProjectRule // highest: --rule flag
-	project *ProjectRule // high: .opencodereview/rule.json
-	global  *ProjectRule // low: ~/.opencodereview/rule.json
-	system  *SystemRule  // lowest: embedded default
+	custom          *ProjectRule // highest: --rule flag
+	project         *ProjectRule // high: .opencodereview/rule.json
+	global          *ProjectRule // low: ~/.opencodereview/rule.json
+	system          *SystemRule  // lowest: embedded default
+	mergeSystemRule bool         // when true, prepend the matched system rule before a user rule
+}
+
+// ResolverOptions controls optional resolver behavior without widening the
+// Resolver interface used by the review agent.
+type ResolverOptions struct {
+	// MergeSystemRule keeps the system checklist in addition to the first
+	// matching custom/project/global rule.
+	MergeSystemRule bool
 }
 
 // NewResolver builds a Resolver with the following priority:
@@ -249,6 +258,11 @@ type composedResolver struct {
 //
 // It also returns a FileFilter with the merged include/exclude patterns from all layers.
 func NewResolver(repoDir, customRulePath string) (Resolver, *FileFilter, error) {
+	return NewResolverWithOptions(repoDir, customRulePath, ResolverOptions{})
+}
+
+// NewResolverWithOptions builds a Resolver with additional behavior flags.
+func NewResolverWithOptions(repoDir, customRulePath string, opts ResolverOptions) (Resolver, *FileFilter, error) {
 	sysRule, err := LoadDefault()
 	if err != nil {
 		return nil, nil, err
@@ -279,7 +293,13 @@ func NewResolver(repoDir, customRulePath string) (Resolver, *FileFilter, error) 
 
 	filter := buildFileFilter(customRule, projectRule, globalRule)
 
-	return &composedResolver{custom: customRule, project: projectRule, global: globalRule, system: sysRule}, filter, nil
+	return &composedResolver{
+		custom:          customRule,
+		project:         projectRule,
+		global:          globalRule,
+		system:          sysRule,
+		mergeSystemRule: opts.MergeSystemRule,
+	}, filter, nil
 }
 
 // buildFileFilter picks the highest-priority layer that has any include/exclude
@@ -352,18 +372,24 @@ func loadProjectRule(repoDir string) (*ProjectRule, error) {
 	return &pr, nil
 }
 
-// Resolve checks each layer in priority order; first match wins.
+// Resolve checks each layer in priority order; first match wins. User rules
+// replace the system rule by default; mergeSystemRule keeps the system rule
+// before the matched user rule.
 func (c *composedResolver) Resolve(path string) string {
-	if rule := matchProjectRule(c.custom, path); rule != "" {
-		return rule
-	}
-	if rule := matchProjectRule(c.project, path); rule != "" {
-		return rule
-	}
-	if rule := matchProjectRule(c.global, path); rule != "" {
-		return rule
+	for _, layer := range []*ProjectRule{c.custom, c.project, c.global} {
+		if rule := matchProjectRule(layer, path); rule != "" {
+			if c.mergeSystemRule {
+				return c.mergeWithSystemRule(path, rule)
+			}
+			return rule
+		}
 	}
 	return c.system.Resolve(path)
+}
+
+func (c *composedResolver) mergeWithSystemRule(path, rule string) string {
+	systemRule := c.system.Resolve(path)
+	return "System Rule: " + systemRule + "\nUser Rule: " + rule
 }
 
 // ResolveDetail returns the matched rule along with its source layer and pattern.
