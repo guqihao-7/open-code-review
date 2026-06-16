@@ -390,10 +390,10 @@ func (c *composedResolver) Resolve(path string) string {
 func (c *composedResolver) mergeWithSystemRule(path, rule string) string {
 	systemRule := c.system.Resolve(path)
 
-	return "## Project-Specific Rules (Mandatory)\n\n" +
+	return "## System-Specific Rules (Mandatory)\n\n" +
 		systemRule +
 		"\n\n---\n\n" +
-		"## Project-Specific Rules (Mandatory)\n\n" +
+		"## User-Specific Rules (Mandatory)\n\n" +
 		rule
 
 }
