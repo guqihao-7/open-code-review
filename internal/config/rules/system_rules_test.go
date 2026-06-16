@@ -298,6 +298,11 @@ func TestNewResolver_CustomRuleOverridesDefault(t *testing.T) {
 func TestNewResolverWithOptions_MergeSystemRuleDisabledByDefault(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
+	// Project rule file:
+	//   <repo>/.opencodereview/rule.json
+	// Path under test:
+	//   main.go -> matches the project **/*.go rule.
+	// This verifies the default behavior: a user rule replaces the system rule.
 	dir := t.TempDir()
 	ocrDir := filepath.Join(dir, ".opencodereview")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
@@ -317,14 +322,16 @@ func TestNewResolverWithOptions_MergeSystemRuleDisabledByDefault(t *testing.T) {
 	if got != "project-go-rule" {
 		t.Fatalf("expected only project rule when merge is disabled, got %q", got)
 	}
-	if strings.Contains(got, "System Rule:") || strings.Contains(got, "User Rule:") {
-		t.Fatalf("did not expect merged rule labels, got %q", got)
-	}
 }
 
 func TestNewResolverWithOptions_MergeSystemRule(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
+	// Project rule file:
+	//   <repo>/.opencodereview/rule.json
+	// Path under test:
+	//   main.go -> matches both the system Go rule and the project **/*.go rule.
+	// This verifies MergeSystemRule keeps both rules
 	dir := t.TempDir()
 	ocrDir := filepath.Join(dir, ".opencodereview")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
@@ -342,14 +349,20 @@ func TestNewResolverWithOptions_MergeSystemRule(t *testing.T) {
 		t.Fatalf("NewResolverWithOptions: %v", err)
 	}
 
+	systemRule, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault: %v", err)
+	}
+	wantSystemRule := systemRule.Resolve("main.go")
+	wantUserRule := "project-go-rule"
+
 	got := resolver.Resolve("main.go")
-	if !strings.Contains(got, "System Rule: ") {
-		t.Fatalf("expected merged system rule label, got %q", truncate(got, 120))
+	systemIdx := strings.Index(got, wantSystemRule)
+	if systemIdx < 0 {
+		t.Fatalf("expected merged system rule, got %q", truncate(got, 120))
 	}
-	if !strings.Contains(got, "Correctness") {
-		t.Fatalf("expected merged Go system rule, got %q", truncate(got, 120))
-	}
-	if !strings.Contains(got, "\nUser Rule: project-go-rule") {
+	userIdx := strings.Index(got, wantUserRule)
+	if userIdx < 0 {
 		t.Fatalf("expected merged project rule, got %q", truncate(got, 120))
 	}
 }
@@ -357,6 +370,13 @@ func TestNewResolverWithOptions_MergeSystemRule(t *testing.T) {
 func TestNewResolverWithOptions_MergeSystemRuleKeepsRulePriority(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
+	// Project rule file:
+	//   <repo>/.opencodereview/rule.json
+	// Custom rule file:
+	//   <custom>/custom_rules.json, passed as --rule equivalent.
+	// Path under test:
+	//   main.go -> matches custom main.go first, then project **/*.go.
+	// This verifies merging does not change layer priority: custom still wins.
 	repoDir := t.TempDir()
 	ocrDir := filepath.Join(repoDir, ".opencodereview")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
@@ -381,8 +401,17 @@ func TestNewResolverWithOptions_MergeSystemRuleKeepsRulePriority(t *testing.T) {
 		t.Fatalf("NewResolverWithOptions: %v", err)
 	}
 
+	systemRule, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault: %v", err)
+	}
+	wantSystemRule := systemRule.Resolve("main.go")
+
 	got := resolver.Resolve("main.go")
-	if !strings.Contains(got, "\nUser Rule: custom-main-rule") {
+	if !strings.Contains(got, wantSystemRule) {
+		t.Fatalf("expected merged system rule, got %q", truncate(got, 120))
+	}
+	if !strings.Contains(got, "custom-main-rule") {
 		t.Fatalf("expected custom rule to win, got %q", truncate(got, 120))
 	}
 	if strings.Contains(got, "project-go-rule") {
@@ -393,6 +422,11 @@ func TestNewResolverWithOptions_MergeSystemRuleKeepsRulePriority(t *testing.T) {
 func TestNewResolverWithOptions_MergeSystemRuleFallsBackToSystemOnly(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
+	// No custom/project/global rule files are configured.
+	// Path under test:
+	//   main.go -> falls back to the system Go rule.
+	// This verifies MergeSystemRule does not wrap or duplicate the system rule
+	// when no user rule matches.
 	resolver, _, err := NewResolverWithOptions(t.TempDir(), "", ResolverOptions{
 		MergeSystemRule: true,
 	})
@@ -400,12 +434,15 @@ func TestNewResolverWithOptions_MergeSystemRuleFallsBackToSystemOnly(t *testing.
 		t.Fatalf("NewResolverWithOptions: %v", err)
 	}
 
-	got := resolver.Resolve("main.go")
-	if strings.Contains(got, "System Rule:") || strings.Contains(got, "User Rule:") {
-		t.Fatalf("expected plain system rule when no user rule matches, got %q", truncate(got, 120))
+	systemRule, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault: %v", err)
 	}
-	if !strings.Contains(got, "Correctness") {
-		t.Fatalf("expected Go system rule, got %q", truncate(got, 120))
+	wantSystemRule := systemRule.Resolve("main.go")
+
+	got := resolver.Resolve("main.go")
+	if got != wantSystemRule {
+		t.Fatalf("expected plain system rule when no user rule matches, got %q", truncate(got, 120))
 	}
 }
 
