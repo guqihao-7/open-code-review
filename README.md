@@ -314,6 +314,7 @@ See the [`examples/`](./examples/) directory for integration examples:
 | `--audience` | — | `human` | `human` (show progress) or `agent` (summary only) |
 | `--background` | `-b` | — | Optional requirement/business context for the review; auto-filled from commit message when using `--commit` |
 | `--rule` | — | — | Path to custom JSON review rules |
+| `--merge-sys-rule` | — | `false` | Merge matched system rules with custom/project/global user rules instead of replacing system rules |
 | `--max-tools` | — | built-in | Max tool call rounds per file; only takes effect when greater than template default |
 | `--max-git-procs` | — | built-in | Max concurrent git subprocesses |
 | `--tools` | — | — | Path to custom JSON tools config |
@@ -345,6 +346,9 @@ ocr review --background "Adding rate limiting to the login API"
 # Use custom review rules
 ocr review --rule /path/to/my-rules.json
 
+# Merge built-in system rules with custom/project/global rules
+ocr review --rule /path/to/my-rules.json --merge-sys-rule
+
 # Preview which rule applies to a file
 ocr rules check src/main/java/com/example/Foo.java
 ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml
@@ -367,6 +371,8 @@ This blocks DNS-rebinding attacks against the local viewer.
 ## Review Rules
 
 OCR resolves review rules using a four-layer priority chain. Each layer uses first-match-wins: if a file path matches a pattern, that rule is used; otherwise it falls through to the next layer.
+
+By default, a matched custom/project/global rule replaces the built-in system rule for that file. Use `ocr review --merge-sys-rule` to keep the matched system rule and merge it with the user rule.
 
 | Priority | Source | Path | Description |
 |----------|--------|------|-------------|

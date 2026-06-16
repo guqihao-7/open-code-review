@@ -312,6 +312,7 @@ ocr review \
 | `--audience` | — | `human` | `human`（显示进度）或 `agent`（仅输出摘要） |
 | `--background` | `-b` | — | 可选的需求/业务背景信息；使用 `--commit` 时如未指定则自动从 commit message 中提取 |
 | `--rule` | — | — | 自定义 JSON 审查规则路径 |
+| `--merge-sys-rule` | — | `false` | 将命中的系统规则与自定义/项目/全局用户规则合并，而不是用用户规则替换系统规则 |
 | `--max-tools` | — | 内置默认 | 每个文件的最大工具调用轮次；仅在大于模板默认值时生效 |
 | `--max-git-procs` | — | 内置默认 | 最大并发 git 子进程数 |
 | `--tools` | — | — | 自定义 JSON 工具配置路径 |
@@ -343,6 +344,9 @@ ocr review --background "为登录 API 添加限流"
 # 使用自定义审查规则
 ocr review --rule /path/to/my-rules.json
 
+# 将内置系统规则与自定义/项目/全局规则合并
+ocr review --rule /path/to/my-rules.json --merge-sys-rule
+
 # 预览某个文件路径生效的规则
 ocr rules check src/main/java/com/example/Foo.java
 ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml
@@ -355,6 +359,8 @@ ocr viewer --addr :3000
 ## 评审规则
 
 OCR 通过四层优先级链解析评审规则。每层采用首次匹配原则：如果文件路径匹配到某个模式，则使用该规则；否则穿透到下一层。
+
+默认情况下，命中的自定义/项目/全局规则会替换该文件对应的内置系统规则。使用 `ocr review --merge-sys-rule` 可以保留命中的系统规则，并与用户规则合并。
 
 | 优先级 | 来源 | 路径 | 描述 |
 |--------|------|------|------|

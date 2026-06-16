@@ -312,6 +312,7 @@ ocr review \
 | `--audience` | - | `human` | `human`(progress 표시) 또는 `agent`(summary only) |
 | `--background` | `-b` | - | 리뷰를 위한 선택적 요구사항/비즈니스 컨텍스트. `--commit` 사용 시 미지정이면 commit message에서 자동 추출 |
 | `--rule` | - | - | custom JSON review rules 경로 |
+| `--merge-sys-rule` | - | `false` | 매칭된 시스템 규칙을 custom/project/global 사용자 규칙과 병합 |
 | `--max-tools` | - | built-in | 파일별 최대 tool call round. template default보다 클 때만 적용 |
 | `--max-git-procs` | - | built-in | 최대 동시 git subprocess 수 |
 | `--tools` | - | - | custom JSON tools config 경로 |

@@ -331,7 +331,8 @@ func TestNewResolverWithOptions_MergeSystemRule(t *testing.T) {
 	//   <repo>/.opencodereview/rule.json
 	// Path under test:
 	//   main.go -> matches both the system Go rule and the project **/*.go rule.
-	// This verifies MergeSystemRule keeps both rules
+	// This verifies MergeSystemRule keeps both rules without depending on the
+	// exact merge markdown or ordering.
 	dir := t.TempDir()
 	ocrDir := filepath.Join(dir, ".opencodereview")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {

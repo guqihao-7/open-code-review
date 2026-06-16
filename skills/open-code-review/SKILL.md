@@ -181,6 +181,8 @@ If the user wants project-specific rules, OCR resolves them in this priority ord
 3. `~/.opencodereview/rule.json`
 4. Built-in system defaults (lowest)
 
+By default, the first matching user rule replaces the built-in system rule. Add `--merge-sys-rule` to `ocr review` when the user wants the matched system rule and user rule to both be included.
+
 Rule file format:
 
 ```json
