@@ -389,13 +389,11 @@ func (c *composedResolver) Resolve(path string) string {
 
 func (c *composedResolver) mergeWithSystemRule(path, rule string) string {
 	systemRule := c.system.Resolve(path)
-
 	return "## System-Specific Rules (Mandatory)\n\n" +
 		systemRule +
 		"\n\n---\n\n" +
 		"## User-Specific Rules (Mandatory)\n\n" +
 		rule
-
 }
 
 // ResolveDetail returns the matched rule along with its source layer and pattern.
