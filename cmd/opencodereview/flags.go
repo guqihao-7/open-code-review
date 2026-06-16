@@ -132,7 +132,7 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 	a.IntVar(&opts.maxTools, "max-tools", 0, "max tool call rounds per file (0 = template default; min 10)")
 	a.IntVar(&opts.maxGitProcs, "max-git-procs", 16, "max concurrent git subprocesses")
 	a.BoolVarP(&opts.preview, "preview", "p", false, "preview which files will be reviewed without running the LLM")
-	a.BoolVar(&opts.mergeSystemRule, "merge-sys-rule", false, "prepend system rules before matched user rules")
+	a.BoolVar(&opts.mergeSystemRule, "merge-sys-rule", false, "merge matched system rules with user rules")
 
 	if err := a.Parse(args); err != nil {
 		return opts, fmt.Errorf("parse flags: %w", err)
