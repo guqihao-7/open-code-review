@@ -765,6 +765,82 @@ func TestResolveDetail_ProjectOverridesSystem(t *testing.T) {
 	}
 }
 
+func TestResolveDetail_MergeSystemRule(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	// Project rule file:
+	//   <repo>/.opencodereview/rule.json
+	// Path under test:
+	//   src/main/foo.java -> matches both the system Java rule and the project rule.
+	// This verifies ResolveDetail reports the matched user rule metadata while
+	// returning merged rule text when MergeSystemRule is enabled.
+	dir := t.TempDir()
+	ocrDir := filepath.Join(dir, ".opencodereview")
+	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleJSON := `{"rules":[{"path":"src/**/*.java","rule":"project-java-rule"}]}`
+	if err := os.WriteFile(filepath.Join(ocrDir, "rule.json"), []byte(ruleJSON), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	resolver, _, err := NewResolverWithOptions(dir, "", ResolverOptions{
+		MergeSystemRule: true,
+	})
+	if err != nil {
+		t.Fatalf("NewResolverWithOptions: %v", err)
+	}
+	dr := resolver.(DetailResolver)
+
+	systemRule, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault: %v", err)
+	}
+	wantSystemRule := systemRule.Resolve("src/main/foo.java")
+
+	detail := dr.ResolveDetail("src/main/foo.java")
+	if detail.Source != "project" {
+		t.Errorf("expected source 'project', got %q", detail.Source)
+	}
+	if detail.Pattern != "src/**/*.java" {
+		t.Errorf("expected pattern 'src/**/*.java', got %q", detail.Pattern)
+	}
+	if !strings.Contains(detail.Rule, wantSystemRule) {
+		t.Fatalf("expected merged system rule, got %q", truncate(detail.Rule, 120))
+	}
+	if !strings.Contains(detail.Rule, "project-java-rule") {
+		t.Fatalf("expected merged project rule, got %q", truncate(detail.Rule, 120))
+	}
+}
+
+func TestResolveDetail_MergeSystemRuleDoesNotWrapSystemFallback(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	// No custom/project/global rule files are configured.
+	// Path under test:
+	//   src/main/foo.java -> falls back to the system Java rule.
+	// This verifies MergeSystemRule only applies when a user rule matches;
+	// system-only results should stay identical to the plain system detail.
+	resolver, _, err := NewResolverWithOptions(t.TempDir(), "", ResolverOptions{
+		MergeSystemRule: true,
+	})
+	if err != nil {
+		t.Fatalf("NewResolverWithOptions: %v", err)
+	}
+	dr := resolver.(DetailResolver)
+
+	systemRule, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault: %v", err)
+	}
+	wantSystemDetail := systemRule.resolveDetail("src/main/foo.java")
+
+	detail := dr.ResolveDetail("src/main/foo.java")
+	if detail != wantSystemDetail {
+		t.Fatalf("expected plain system detail when no user rule matches, got %+v", detail)
+	}
+}
+
 func TestResolveDetail_CustomOverridesAll(t *testing.T) {
 	// Project rule
 	repoDir := t.TempDir()
