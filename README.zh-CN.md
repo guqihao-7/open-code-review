@@ -354,6 +354,7 @@ ocr review --rule /path/to/my-rules.json --merge-sys-rule
 
 # 预览某个文件路径生效的规则
 ocr rules check src/main/java/com/example/Foo.java
+ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
 ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml
 
 # 在浏览器中查看审查会话历史

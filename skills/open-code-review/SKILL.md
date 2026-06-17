@@ -204,6 +204,7 @@ To preview which rule applies to a file before reviewing:
 
 ```bash
 ocr rules check src/main/java/com/example/Foo.java
+ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
 ```
 
 ## Gotchas

@@ -351,6 +351,7 @@ ocr review --rule /path/to/my-rules.json
 
 # 파일에 적용될 rule 미리보기
 ocr rules check src/main/java/com/example/Foo.java
+ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
 ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml
 
 # browser에서 review session history 보기

@@ -397,17 +397,30 @@ func (c *composedResolver) mergeWithSystemRule(path, rule string) string {
 }
 
 // ResolveDetail returns the matched rule along with its source layer and pattern.
+// When mergeSystemRule is enabled and a user rule matches, Rule contains the
+// merged system+user rule text while Source and Pattern still describe the
+// user rule that won the priority chain.
 func (c *composedResolver) ResolveDetail(path string) RuleDetail {
 	if detail := matchProjectRuleDetail(c.custom, path, "custom"); detail != nil {
-		return *detail
+		return c.applySystemRuleMerge(path, *detail)
 	}
 	if detail := matchProjectRuleDetail(c.project, path, "project"); detail != nil {
-		return *detail
+		return c.applySystemRuleMerge(path, *detail)
 	}
 	if detail := matchProjectRuleDetail(c.global, path, "global"); detail != nil {
-		return *detail
+		return c.applySystemRuleMerge(path, *detail)
 	}
 	return c.system.resolveDetail(path)
+}
+
+// applySystemRuleMerge applies the optional system-rule merge to a user-rule
+// detail. It only changes Rule; Source and Pattern continue to identify the
+// matched user rule.
+func (c *composedResolver) applySystemRuleMerge(path string, detail RuleDetail) RuleDetail {
+	if c.mergeSystemRule {
+		detail.Rule = c.mergeWithSystemRule(path, detail.Rule)
+	}
+	return detail
 }
 
 func matchProjectRule(pr *ProjectRule, path string) string {

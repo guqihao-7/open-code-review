@@ -26,8 +26,10 @@ func runRules(args []string) error {
 func runRulesCheck(args []string) error {
 	a := newOcrFlagSet("ocr rules check")
 	var repoDir, rulePath string
+	var mergeSystemRule bool
 	a.StringVar(&repoDir, "repo", "", "root directory of the git repository (default: current dir)")
 	a.StringVar(&rulePath, "rule", "", "path to JSON file with custom review rules")
+	a.BoolVar(&mergeSystemRule, "merge-sys-rule", false, "merge matched system rules with user rules")
 	if err := a.Parse(args); err != nil {
 		return err
 	}
@@ -48,7 +50,9 @@ func runRulesCheck(args []string) error {
 		return err
 	}
 
-	resolver, _, err := rules.NewResolver(resolvedRepo, rulePath)
+	resolver, _, err := rules.NewResolverWithOptions(resolvedRepo, rulePath, rules.ResolverOptions{
+		MergeSystemRule: mergeSystemRule,
+	})
 	if err != nil {
 		return fmt.Errorf("load rules: %w", err)
 	}
@@ -95,10 +99,12 @@ func printRulesCheckUsage() {
 Show which review rule applies to the given file path, including its source layer and matched pattern.
 
 Flags:
-  --repo    Root directory of the git repository (default: current dir)
-  --rule    Path to a custom rule JSON file
+  --repo            Root directory of the git repository (default: current dir)
+  --rule            Path to a custom rule JSON file
+  --merge-sys-rule  Merge matched system rules with user rules
 
 Examples:
   ocr rules check src/main/java/com/example/Foo.java
+  ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
   ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml`)
 }

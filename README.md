@@ -356,6 +356,7 @@ ocr review --rule /path/to/my-rules.json --merge-sys-rule
 
 # Preview which rule applies to a file
 ocr rules check src/main/java/com/example/Foo.java
+ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
 ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml
 
 # View review session history in browser

@@ -353,6 +353,7 @@ ocr review --rule /path/to/my-rules.json
 
 # Посмотреть, какое правило применяется к файлу
 ocr rules check src/main/java/com/example/Foo.java
+ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
 ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml
 
 # Открыть историю сессий ревью в браузере
