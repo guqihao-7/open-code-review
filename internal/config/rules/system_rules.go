@@ -375,6 +375,11 @@ func (c *composedResolver) Resolve(path string) string {
 
 func (c *composedResolver) mergeWithSystemRule(path, rule string) string {
 	systemRule := c.system.Resolve(path)
+
+	if systemRule == "" {
+		return rule
+	}
+
 	return "## System-Specific Rules (Mandatory)\n\n" +
 		systemRule +
 		"\n\n---\n\n" +
