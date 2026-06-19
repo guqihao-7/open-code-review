@@ -186,7 +186,7 @@ If the user wants project-specific rules, OCR resolves them in this priority ord
 3. `~/.opencodereview/rule.json`
 4. Built-in system defaults (lowest)
 
-By default, the first matching user rule replaces the built-in system rule. Add `--merge-sys-rule` to `ocr review` when the user wants the matched system rule and user rule to both be included.
+By default, the first matching user rule replaces the built-in system rule. Set `merge_system_rule: true` on a rule entry when the matched system rule and user rule should both be included.
 
 Rule file format:
 
@@ -195,7 +195,8 @@ Rule file format:
   "rules": [
     {
       "path": "**/*.java",
-      "rule": "All new methods must validate required parameters for null"
+      "rule": "All new methods must validate required parameters for null",
+      "merge_system_rule": true
     },
     {
       "path": "**/*mapper*.xml",
@@ -209,7 +210,6 @@ To preview which rule applies to a file before reviewing:
 
 ```bash
 ocr rules check src/main/java/com/example/Foo.java
-ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
 ```
 
 ## Gotchas

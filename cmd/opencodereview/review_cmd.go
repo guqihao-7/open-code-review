@@ -59,9 +59,7 @@ func runReview(args []string) error {
 		}
 	}
 
-	resolver, fileFilter, err := rules.NewResolverWithOptions(repoDir, opts.rulePath, rules.ResolverOptions{
-		MergeSystemRule: opts.mergeSystemRule,
-	})
+	resolver, fileFilter, err := rules.NewResolver(repoDir, opts.rulePath)
 	if err != nil {
 		return fmt.Errorf("load rules: %w", err)
 	}

@@ -178,8 +178,9 @@ func expandBraces(s string) []string {
 
 // ProjectRuleEntry is a single entry in .opencodereview/rule.json.
 type ProjectRuleEntry struct {
-	Path string `json:"path"`
-	Rule string `json:"rule"`
+	Path            string `json:"path"`
+	Rule            string `json:"rule"`
+	MergeSystemRule bool   `json:"merge_system_rule,omitempty"`
 }
 
 // ProjectRule holds rules loaded from <repoDir>/.opencodereview/rule.json.
@@ -235,19 +236,10 @@ func (f *FileFilter) IsUserIncluded(path string) bool {
 
 // composedResolver implements Resolver with layered priority.
 type composedResolver struct {
-	custom          *ProjectRule // highest: --rule flag
-	project         *ProjectRule // high: .opencodereview/rule.json
-	global          *ProjectRule // low: ~/.opencodereview/rule.json
-	system          *SystemRule  // lowest: embedded default
-	mergeSystemRule bool         // when true, prepend the matched system rule before a user rule
-}
-
-// ResolverOptions controls optional resolver behavior without widening the
-// Resolver interface used by the review agent.
-type ResolverOptions struct {
-	// MergeSystemRule keeps the system checklist in addition to the first
-	// matching custom/project/global rule.
-	MergeSystemRule bool
+	custom  *ProjectRule // highest: --rule flag
+	project *ProjectRule // high: .opencodereview/rule.json
+	global  *ProjectRule // low: ~/.opencodereview/rule.json
+	system  *SystemRule  // lowest: embedded default
 }
 
 // NewResolver builds a Resolver with the following priority:
@@ -258,11 +250,6 @@ type ResolverOptions struct {
 //
 // It also returns a FileFilter with the merged include/exclude patterns from all layers.
 func NewResolver(repoDir, customRulePath string) (Resolver, *FileFilter, error) {
-	return NewResolverWithOptions(repoDir, customRulePath, ResolverOptions{})
-}
-
-// NewResolverWithOptions builds a Resolver with additional behavior flags.
-func NewResolverWithOptions(repoDir, customRulePath string, opts ResolverOptions) (Resolver, *FileFilter, error) {
 	sysRule, err := LoadDefault()
 	if err != nil {
 		return nil, nil, err
@@ -294,11 +281,10 @@ func NewResolverWithOptions(repoDir, customRulePath string, opts ResolverOptions
 	filter := buildFileFilter(customRule, projectRule, globalRule)
 
 	return &composedResolver{
-		custom:          customRule,
-		project:         projectRule,
-		global:          globalRule,
-		system:          sysRule,
-		mergeSystemRule: opts.MergeSystemRule,
+		custom:  customRule,
+		project: projectRule,
+		global:  globalRule,
+		system:  sysRule,
 	}, filter, nil
 }
 
@@ -373,15 +359,15 @@ func loadProjectRule(repoDir string) (*ProjectRule, error) {
 }
 
 // Resolve checks each layer in priority order; first match wins. User rules
-// replace the system rule by default; mergeSystemRule keeps the system rule
-// before the matched user rule.
+// replace the system rule by default; rules with merge_system_rule keep the
+// matched system rule alongside the user rule.
 func (c *composedResolver) Resolve(path string) string {
 	for _, layer := range []*ProjectRule{c.custom, c.project, c.global} {
-		if rule := matchProjectRule(layer, path); rule != "" {
-			if c.mergeSystemRule {
-				return c.mergeWithSystemRule(path, rule)
+		if entry := matchProjectRuleEntry(layer, path); entry != nil {
+			if entry.MergeSystemRule {
+				return c.mergeWithSystemRule(path, entry.Rule)
 			}
-			return rule
+			return entry.Rule
 		}
 	}
 	return c.system.Resolve(path)
@@ -397,61 +383,48 @@ func (c *composedResolver) mergeWithSystemRule(path, rule string) string {
 }
 
 // ResolveDetail returns the matched rule along with its source layer and pattern.
-// When mergeSystemRule is enabled and a user rule matches, Rule contains the
-// merged system+user rule text while Source and Pattern still describe the
-// user rule that won the priority chain.
+// When a user rule sets merge_system_rule, Rule contains the merged system+user
+// rule text while Source and Pattern still describe the user rule that won the
+// priority chain.
 func (c *composedResolver) ResolveDetail(path string) RuleDetail {
-	if detail := matchProjectRuleDetail(c.custom, path, "custom"); detail != nil {
-		return c.applySystemRuleMerge(path, *detail)
+	if detail := c.matchProjectRuleDetail(path, c.custom, "custom"); detail != nil {
+		return *detail
 	}
-	if detail := matchProjectRuleDetail(c.project, path, "project"); detail != nil {
-		return c.applySystemRuleMerge(path, *detail)
+	if detail := c.matchProjectRuleDetail(path, c.project, "project"); detail != nil {
+		return *detail
 	}
-	if detail := matchProjectRuleDetail(c.global, path, "global"); detail != nil {
-		return c.applySystemRuleMerge(path, *detail)
+	if detail := c.matchProjectRuleDetail(path, c.global, "global"); detail != nil {
+		return *detail
 	}
 	return c.system.resolveDetail(path)
 }
 
-// applySystemRuleMerge applies the optional system-rule merge to a user-rule
-// detail. It only changes Rule; Source and Pattern continue to identify the
-// matched user rule.
-func (c *composedResolver) applySystemRuleMerge(path string, detail RuleDetail) RuleDetail {
-	if c.mergeSystemRule {
-		detail.Rule = c.mergeWithSystemRule(path, detail.Rule)
+func (c *composedResolver) matchProjectRuleDetail(path string, pr *ProjectRule, source string) *RuleDetail {
+	entry := matchProjectRuleEntry(pr, path)
+	if entry == nil {
+		return nil
 	}
-	return detail
+	rule := entry.Rule
+	if entry.MergeSystemRule {
+		rule = c.mergeWithSystemRule(path, rule)
+	}
+	return &RuleDetail{Rule: rule, Source: source, Pattern: entry.Path}
 }
 
-func matchProjectRule(pr *ProjectRule, path string) string {
-	if pr == nil {
-		return ""
-	}
-	lowerPath := strings.ToLower(path)
-	for _, entry := range pr.Rules {
-		expanded := expandBraces(entry.Path)
-		for _, p := range expanded {
-			if matched, _ := doublestar.Match(strings.ToLower(p), lowerPath); matched {
-				return entry.Rule
-			}
-		}
-	}
-	return ""
-}
-
-func matchProjectRuleDetail(pr *ProjectRule, path, source string) *RuleDetail {
+func matchProjectRuleEntry(pr *ProjectRule, path string) *ProjectRuleEntry {
 	if pr == nil {
 		return nil
 	}
 	lowerPath := strings.ToLower(path)
-	for _, entry := range pr.Rules {
+	for i := range pr.Rules {
+		entry := &pr.Rules[i]
 		if entry.Rule == "" {
 			continue
 		}
 		expanded := expandBraces(entry.Path)
 		for _, p := range expanded {
 			if matched, _ := doublestar.Match(strings.ToLower(p), lowerPath); matched {
-				return &RuleDetail{Rule: entry.Rule, Source: source, Pattern: entry.Path}
+				return entry
 			}
 		}
 	}

@@ -315,7 +315,6 @@ See the [`examples/`](./examples/) directory for integration examples:
 | `--background` | `-b` | — | Optional requirement/business context for the review; auto-filled from commit message when using `--commit` |
 | `--model` | — | — | Select or override the LLM model for this review |
 | `--rule` | — | — | Path to custom JSON review rules |
-| `--merge-sys-rule` | — | `false` | Merge matched system rules with custom/project/global user rules instead of replacing system rules |
 | `--max-tools` | — | built-in | Max tool call rounds per file; only takes effect when greater than template default |
 | `--max-git-procs` | — | built-in | Max concurrent git subprocesses |
 | `--tools` | — | — | Path to custom JSON tools config |
@@ -351,12 +350,8 @@ ocr review --background "Adding rate limiting to the login API"
 # Use custom review rules
 ocr review --rule /path/to/my-rules.json
 
-# Merge built-in system rules with custom/project/global rules
-ocr review --rule /path/to/my-rules.json --merge-sys-rule
-
 # Preview which rule applies to a file
 ocr rules check src/main/java/com/example/Foo.java
-ocr rules check --merge-sys-rule src/main/java/com/example/Foo.java
 ocr rules check --rule custom.json src/main/resources/mapper/UserMapper.xml
 
 # View review session history in browser
@@ -378,8 +373,6 @@ This blocks DNS-rebinding attacks against the local viewer.
 
 OCR resolves review rules using a four-layer priority chain. Each layer uses first-match-wins: if a file path matches a pattern, that rule is used; otherwise it falls through to the next layer.
 
-By default, a matched custom/project/global rule replaces the built-in system rule for that file. Use `ocr review --merge-sys-rule` to keep the matched system rule and merge it with the user rule.
-
 | Priority | Source | Path | Description |
 |----------|--------|------|-------------|
 | 1 (highest) | `--rule` flag | User-specified path | CLI explicit override |
@@ -396,7 +389,8 @@ Layers 1–3 share the same JSON format:
   "rules": [
     {
       "path": "force-api/**/*.java",
-      "rule": "All new methods must validate required parameters for null values"
+      "rule": "All new methods must validate required parameters for null values",
+      "merge_system_rule": true
     },
     {
       "path": "**/*mapper*.xml",
@@ -407,6 +401,7 @@ Layers 1–3 share the same JSON format:
 ```
 
 - `path` supports `**` recursive matching and `{java,kt}` brace expansion.
+- `merge_system_rule` is optional. When `true`, the matched built-in system rule is merged with this user rule; otherwise the user rule replaces the system rule.
 - Within each layer, rules are evaluated in declaration order — the first match wins.
 - If a rule file does not exist, it is silently skipped.
 

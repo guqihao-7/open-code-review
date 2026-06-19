@@ -295,14 +295,15 @@ func TestNewResolver_CustomRuleOverridesDefault(t *testing.T) {
 	}
 }
 
-func TestNewResolverWithOptions_MergeSystemRuleDisabledByDefault(t *testing.T) {
+func TestNewResolver_ProjectRuleReplacesSystemRuleByDefault(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
 	// Project rule file:
 	//   <repo>/.opencodereview/rule.json
 	// Path under test:
 	//   main.go -> matches the project **/*.go rule.
-	// This verifies the default behavior: a user rule replaces the system rule.
+	// This verifies the default behavior: a user rule replaces the system rule
+	// unless the matched rule entry opts into merge_system_rule.
 	dir := t.TempDir()
 	ocrDir := filepath.Join(dir, ".opencodereview")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
@@ -313,9 +314,9 @@ func TestNewResolverWithOptions_MergeSystemRuleDisabledByDefault(t *testing.T) {
 		t.Fatalf("write rule.json: %v", err)
 	}
 
-	resolver, _, err := NewResolverWithOptions(dir, "", ResolverOptions{})
+	resolver, _, err := NewResolver(dir, "")
 	if err != nil {
-		t.Fatalf("NewResolverWithOptions: %v", err)
+		t.Fatalf("NewResolver: %v", err)
 	}
 
 	got := resolver.Resolve("main.go")
@@ -324,30 +325,28 @@ func TestNewResolverWithOptions_MergeSystemRuleDisabledByDefault(t *testing.T) {
 	}
 }
 
-func TestNewResolverWithOptions_MergeSystemRule(t *testing.T) {
+func TestNewResolver_ProjectRuleMergesSystemRule(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
 	// Project rule file:
 	//   <repo>/.opencodereview/rule.json
 	// Path under test:
 	//   main.go -> matches both the system Go rule and the project **/*.go rule.
-	// This verifies MergeSystemRule keeps both rules without depending on the
+	// This verifies merge_system_rule keeps both rules without depending on the
 	// exact merge markdown or ordering.
 	dir := t.TempDir()
 	ocrDir := filepath.Join(dir, ".opencodereview")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	ruleJSON := `{"rules":[{"path":"**/*.go","rule":"project-go-rule"}]}`
+	ruleJSON := `{"rules":[{"path":"**/*.go","rule":"project-go-rule","merge_system_rule":true}]}`
 	if err := os.WriteFile(filepath.Join(ocrDir, "rule.json"), []byte(ruleJSON), 0o644); err != nil {
 		t.Fatalf("write rule.json: %v", err)
 	}
 
-	resolver, _, err := NewResolverWithOptions(dir, "", ResolverOptions{
-		MergeSystemRule: true,
-	})
+	resolver, _, err := NewResolver(dir, "")
 	if err != nil {
-		t.Fatalf("NewResolverWithOptions: %v", err)
+		t.Fatalf("NewResolver: %v", err)
 	}
 
 	systemRule, err := LoadDefault()
@@ -368,7 +367,7 @@ func TestNewResolverWithOptions_MergeSystemRule(t *testing.T) {
 	}
 }
 
-func TestNewResolverWithOptions_MergeSystemRuleKeepsRulePriority(t *testing.T) {
+func TestNewResolver_MergeSystemRuleKeepsRulePriority(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
 	// Project rule file:
@@ -389,17 +388,15 @@ func TestNewResolverWithOptions_MergeSystemRuleKeepsRulePriority(t *testing.T) {
 	}
 
 	customDir := t.TempDir()
-	customRule := `{"rules":[{"path":"main.go","rule":"custom-main-rule"}]}`
+	customRule := `{"rules":[{"path":"main.go","rule":"custom-main-rule","merge_system_rule":true}]}`
 	customPath := filepath.Join(customDir, "custom_rules.json")
 	if err := os.WriteFile(customPath, []byte(customRule), 0o644); err != nil {
 		t.Fatalf("write custom rule: %v", err)
 	}
 
-	resolver, _, err := NewResolverWithOptions(repoDir, customPath, ResolverOptions{
-		MergeSystemRule: true,
-	})
+	resolver, _, err := NewResolver(repoDir, customPath)
 	if err != nil {
-		t.Fatalf("NewResolverWithOptions: %v", err)
+		t.Fatalf("NewResolver: %v", err)
 	}
 
 	systemRule, err := LoadDefault()
@@ -417,33 +414,6 @@ func TestNewResolverWithOptions_MergeSystemRuleKeepsRulePriority(t *testing.T) {
 	}
 	if strings.Contains(got, "project-go-rule") {
 		t.Fatalf("project rule should not be merged when custom rule matches first, got %q", truncate(got, 120))
-	}
-}
-
-func TestNewResolverWithOptions_MergeSystemRuleFallsBackToSystemOnly(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-
-	// No custom/project/global rule files are configured.
-	// Path under test:
-	//   main.go -> falls back to the system Go rule.
-	// This verifies MergeSystemRule does not wrap or duplicate the system rule
-	// when no user rule matches.
-	resolver, _, err := NewResolverWithOptions(t.TempDir(), "", ResolverOptions{
-		MergeSystemRule: true,
-	})
-	if err != nil {
-		t.Fatalf("NewResolverWithOptions: %v", err)
-	}
-
-	systemRule, err := LoadDefault()
-	if err != nil {
-		t.Fatalf("LoadDefault: %v", err)
-	}
-	wantSystemRule := systemRule.Resolve("main.go")
-
-	got := resolver.Resolve("main.go")
-	if got != wantSystemRule {
-		t.Fatalf("expected plain system rule when no user rule matches, got %q", truncate(got, 120))
 	}
 }
 
@@ -773,22 +743,20 @@ func TestResolveDetail_MergeSystemRule(t *testing.T) {
 	// Path under test:
 	//   src/main/foo.java -> matches both the system Java rule and the project rule.
 	// This verifies ResolveDetail reports the matched user rule metadata while
-	// returning merged rule text when MergeSystemRule is enabled.
+	// returning merged rule text when the entry sets merge_system_rule.
 	dir := t.TempDir()
 	ocrDir := filepath.Join(dir, ".opencodereview")
 	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	ruleJSON := `{"rules":[{"path":"src/**/*.java","rule":"project-java-rule"}]}`
+	ruleJSON := `{"rules":[{"path":"src/**/*.java","rule":"project-java-rule","merge_system_rule":true}]}`
 	if err := os.WriteFile(filepath.Join(ocrDir, "rule.json"), []byte(ruleJSON), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
-	resolver, _, err := NewResolverWithOptions(dir, "", ResolverOptions{
-		MergeSystemRule: true,
-	})
+	resolver, _, err := NewResolver(dir, "")
 	if err != nil {
-		t.Fatalf("NewResolverWithOptions: %v", err)
+		t.Fatalf("NewResolver: %v", err)
 	}
 	dr := resolver.(DetailResolver)
 
@@ -810,34 +778,6 @@ func TestResolveDetail_MergeSystemRule(t *testing.T) {
 	}
 	if !strings.Contains(detail.Rule, "project-java-rule") {
 		t.Fatalf("expected merged project rule, got %q", truncate(detail.Rule, 120))
-	}
-}
-
-func TestResolveDetail_MergeSystemRuleDoesNotWrapSystemFallback(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-
-	// No custom/project/global rule files are configured.
-	// Path under test:
-	//   src/main/foo.java -> falls back to the system Java rule.
-	// This verifies MergeSystemRule only applies when a user rule matches;
-	// system-only results should stay identical to the plain system detail.
-	resolver, _, err := NewResolverWithOptions(t.TempDir(), "", ResolverOptions{
-		MergeSystemRule: true,
-	})
-	if err != nil {
-		t.Fatalf("NewResolverWithOptions: %v", err)
-	}
-	dr := resolver.(DetailResolver)
-
-	systemRule, err := LoadDefault()
-	if err != nil {
-		t.Fatalf("LoadDefault: %v", err)
-	}
-	wantSystemDetail := systemRule.resolveDetail("src/main/foo.java")
-
-	detail := dr.ResolveDetail("src/main/foo.java")
-	if detail != wantSystemDetail {
-		t.Fatalf("expected plain system detail when no user rule matches, got %+v", detail)
 	}
 }
 
