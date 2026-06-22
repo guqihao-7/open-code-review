@@ -13,6 +13,7 @@ import (
 )
 
 // Resolver resolves a review rule for a file path.
+// Push test comment.
 type Resolver interface {
 	Resolve(path string) string
 }
