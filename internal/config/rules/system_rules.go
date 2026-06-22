@@ -423,9 +423,6 @@ func matchProjectRuleEntry(pr *ProjectRule, path string) *ProjectRuleEntry {
 	lowerPath := strings.ToLower(path)
 	for i := range pr.Rules {
 		entry := &pr.Rules[i]
-		if entry.Rule == "" {
-			continue
-		}
 		expanded := expandBraces(entry.Path)
 		for _, p := range expanded {
 			if matched, _ := doublestar.Match(strings.ToLower(p), lowerPath); matched {

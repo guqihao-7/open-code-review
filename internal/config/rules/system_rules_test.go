@@ -249,6 +249,36 @@ func TestNewResolver_ProjectRuleHighestPriority(t *testing.T) {
 	}
 }
 
+func TestNewResolver_ProjectRuleFirstMatchWinsWithinFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	// Project rule file:
+	//   <repo>/.opencodereview/rule.json
+	// Path under test:
+	//   internal/config/rules/system_rules.go -> matches both project entries.
+	// This verifies declaration order inside one JSON rule file: the first
+	// matching entry wins even when a later entry is more specific.
+	dir := t.TempDir()
+	ocrDir := filepath.Join(dir, ".opencodereview")
+	if err := os.MkdirAll(ocrDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleJSON := `{"rules":[{"path":"internal/**/*.go","rule":"first-go-rule"},{"path":"internal/config/**/*.go","rule":"second-config-rule"}]}`
+	if err := os.WriteFile(filepath.Join(ocrDir, "rule.json"), []byte(ruleJSON), 0o644); err != nil {
+		t.Fatalf("write rule.json: %v", err)
+	}
+
+	resolver, _, err := NewResolver(dir, "")
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+
+	got := resolver.Resolve("internal/config/rules/system_rules.go")
+	if got != "first-go-rule" {
+		t.Fatalf("expected first matching project rule, got %q", got)
+	}
+}
+
 func TestNewResolver_ProjectRuleFallsBackToSystem(t *testing.T) {
 	dir := t.TempDir()
 	ocrDir := filepath.Join(dir, ".opencodereview")
