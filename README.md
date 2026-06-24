@@ -360,7 +360,7 @@ See the [`examples/`](./examples/) directory for integration examples:
 | `--format` | `-f` | `text` | Output format: `text` or `json` |
 | `--concurrency` | — | `8` | Max concurrent file reviews |
 | `--timeout` | — | `10` | Per-file review timeout in minutes |
-| `--llm-timeout` | — | `0` | Single LLM request timeout in seconds; `0` uses `--timeout` |
+| `--llm-timeout` | — | `0` | Single LLM request timeout in seconds; `0` keeps task template timeouts |
 | `--audience` | — | `human` | `human` (show progress) or `agent` (summary only) |
 | `--background` | `-b` | — | Optional requirement/business context for the review; auto-filled from commit message when using `--commit` |
 | `--model` | — | — | Select or override the LLM model for this review |

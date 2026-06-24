@@ -56,10 +56,10 @@ func TestParseReviewFlagsAllowsFromAndTo(t *testing.T) {
 	}
 }
 
-func TestEffectiveLLMRequestTimeoutUsesReviewTimeoutByDefault(t *testing.T) {
+func TestEffectiveLLMRequestTimeoutKeepsTemplateTimeoutsByDefault(t *testing.T) {
 	got := effectiveLLMRequestTimeout(reviewOptions{perFileTimeout: 10})
-	if got != 10*time.Minute {
-		t.Fatalf("effectiveLLMRequestTimeout = %v, want %v", got, 10*time.Minute)
+	if got != 0 {
+		t.Fatalf("effectiveLLMRequestTimeout = %v, want 0", got)
 	}
 }
 

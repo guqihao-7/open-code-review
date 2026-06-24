@@ -358,7 +358,7 @@ ocr review \
 | `--format` | `-f` | `text` | 输出格式：`text` 或 `json` |
 | `--concurrency` | — | `8` | 最大并发文件审查数 |
 | `--timeout` | — | `10` | 单个文件审查总超时时间（分钟） |
-| `--llm-timeout` | — | `0` | 单次 LLM 请求超时时间（秒）；`0` 表示使用 `--timeout` |
+| `--llm-timeout` | — | `0` | 单次 LLM 请求超时时间（秒）；`0` 表示保留任务模板里的 timeout |
 | `--audience` | — | `human` | `human`（显示进度）或 `agent`（仅输出摘要） |
 | `--background` | `-b` | — | 可选的需求/业务背景信息；使用 `--commit` 时如未指定则自动从 commit message 中提取 |
 | `--model` | — | — | 为本次审查选择或覆盖 LLM 模型 |

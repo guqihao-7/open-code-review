@@ -200,9 +200,6 @@ func effectiveLLMRequestTimeout(opts reviewOptions) time.Duration {
 	if opts.llmTimeout > 0 {
 		return time.Duration(opts.llmTimeout) * time.Second
 	}
-	if opts.perFileTimeout > 0 {
-		return time.Duration(opts.perFileTimeout) * time.Minute
-	}
 	return 0
 }
 
