@@ -359,7 +359,8 @@ See the [`examples/`](./examples/) directory for integration examples:
 | `--preview` | `-p` | `false` | Preview which files will be reviewed without running the LLM |
 | `--format` | `-f` | `text` | Output format: `text` or `json` |
 | `--concurrency` | — | `8` | Max concurrent file reviews |
-| `--timeout` | — | `10` | Concurrent task timeout in minutes |
+| `--timeout` | — | `10` | Per-file review timeout in minutes |
+| `--llm-timeout` | — | `0` | Single LLM request timeout in seconds; `0` uses `--timeout` |
 | `--audience` | — | `human` | `human` (show progress) or `agent` (summary only) |
 | `--background` | `-b` | — | Optional requirement/business context for the review; auto-filled from commit message when using `--commit` |
 | `--model` | — | — | Select or override the LLM model for this review |

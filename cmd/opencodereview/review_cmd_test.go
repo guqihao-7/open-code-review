@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidateReviewRefsRejectsOptionLikeCommit(t *testing.T) {
@@ -52,5 +53,19 @@ func TestParseReviewFlagsAllowsFromAndTo(t *testing.T) {
 	}
 	if opts.from != "main" || opts.to != "HEAD" {
 		t.Fatalf("unexpected opts: from=%q to=%q", opts.from, opts.to)
+	}
+}
+
+func TestEffectiveLLMRequestTimeoutUsesReviewTimeoutByDefault(t *testing.T) {
+	got := effectiveLLMRequestTimeout(reviewOptions{perFileTimeout: 10})
+	if got != 10*time.Minute {
+		t.Fatalf("effectiveLLMRequestTimeout = %v, want %v", got, 10*time.Minute)
+	}
+}
+
+func TestEffectiveLLMRequestTimeoutUsesExplicitLLMTimeout(t *testing.T) {
+	got := effectiveLLMRequestTimeout(reviewOptions{perFileTimeout: 10, llmTimeout: 300})
+	if got != 300*time.Second {
+		t.Fatalf("effectiveLLMRequestTimeout = %v, want %v", got, 300*time.Second)
 	}
 }

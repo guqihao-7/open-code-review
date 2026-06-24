@@ -192,11 +192,17 @@ type ClientConfig struct {
 // NewLLMClient creates the appropriate client based on the resolved endpoint protocol.
 // protocol: "anthropic" -> AnthropicClient, anything else -> OpenAIClient.
 func NewLLMClient(ep ResolvedEndpoint) LLMClient {
+	return NewLLMClientWithTimeout(ep, 0)
+}
+
+// NewLLMClientWithTimeout creates an LLM client with an optional request timeout.
+func NewLLMClientWithTimeout(ep ResolvedEndpoint, timeout time.Duration) LLMClient {
 	cfg := ClientConfig{
 		URL:        ep.URL,
 		APIKey:     ep.Token,
 		Model:      ep.Model,
 		AuthHeader: ep.AuthHeader,
+		Timeout:    timeout,
 		ExtraBody:  ep.ExtraBody,
 	}
 	if ep.Protocol == "anthropic" {

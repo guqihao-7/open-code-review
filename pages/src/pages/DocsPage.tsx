@@ -405,6 +405,7 @@ const DocsPage: React.FC = () => {
                     ['--rule', t('docs.reviewFlag6Desc'), t('docs.reviewFlag6Default')],
                     ['--concurrency', t('docs.reviewFlag7Desc'), '8'],
                     ['--timeout', t('docs.reviewFlag8Desc'), '10'],
+                    ['--llm-timeout', t('docs.reviewFlag12Desc'), '0'],
                     ['--audience', t('docs.reviewFlag9Desc'), 'human'],
                     ['--max-tools', t('docs.reviewFlag10Desc'), t('docs.reviewFlag10Default')],
                     ['--max-git-procs', t('docs.reviewFlag11Desc'), t('docs.reviewFlag10Default')],

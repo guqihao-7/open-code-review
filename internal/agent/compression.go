@@ -193,11 +193,13 @@ func (a *Agent) runCompression(ctx context.Context, msgs []llm.Message, filePath
 	}
 
 	startTime := time.Now()
-	resp, err := a.args.LLMClient.CompletionsWithCtx(ctx, llm.ChatRequest{
+	requestCtx, cancel := llmRequestContext(ctx, a.args.Template.MemoryCompressionTask.Timeout)
+	resp, err := a.args.LLMClient.CompletionsWithCtx(requestCtx, llm.ChatRequest{
 		Model:     a.args.Model,
 		Messages:  compressionMsgs,
 		MaxTokens: a.args.Template.MaxTokens,
 	})
+	cancel()
 	duration := time.Since(startTime)
 
 	fs := a.session.GetOrCreateFileSession(filePath)

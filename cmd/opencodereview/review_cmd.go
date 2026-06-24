@@ -41,6 +41,10 @@ func runReview(args []string) error {
 	if opts.maxTools > 0 {
 		tpl.MaxToolRequestTimes = opts.maxTools
 	}
+	llmRequestTimeout := effectiveLLMRequestTimeout(opts)
+	if llmRequestTimeout > 0 {
+		tpl.ApplyRequestTimeout(int(llmRequestTimeout / time.Second))
+	}
 	if err := tpl.Validate(); err != nil {
 		return fmt.Errorf("invalid config: %w", err)
 	}
@@ -68,13 +72,6 @@ func runReview(args []string) error {
 		return runPreview(repoDir, opts, fileFilter)
 	}
 
-	toolEntries, err := toolsconfig.Load(opts.toolConfigPath)
-	if err != nil {
-		return fmt.Errorf("load tools: %w", err)
-	}
-	planToolDefs := agent.BuildToolDefs(toolEntries, true)
-	mainToolDefs := agent.BuildToolDefs(toolEntries, false)
-
 	cfgPath, err := defaultConfigPath()
 	if err != nil {
 		return err
@@ -95,7 +92,7 @@ func runReview(args []string) error {
 		return fmt.Errorf("resolve LLM endpoint: %w", err)
 	}
 
-	llmClient := llm.NewLLMClient(ep)
+	llmClient := llm.NewLLMClientWithTimeout(ep, llmRequestTimeout)
 	model := ep.Model
 
 	gitRunner := gitcmd.New(opts.maxGitProcs)
@@ -109,7 +106,16 @@ func runReview(args []string) error {
 		Ref:     ref,
 		Runner:  gitRunner,
 	}
-	tools := buildToolRegistry(collector, fileReader)
+	codeGraphAvailability := tool.CheckCodeGraphAvailable(context.Background(), fileReader, tool.CodeGraphOptions{})
+	tools := buildToolRegistry(collector, fileReader, codeGraphAvailability)
+
+	toolEntries, err := toolsconfig.Load(opts.toolConfigPath)
+	if err != nil {
+		return fmt.Errorf("load tools: %w", err)
+	}
+	toolEntries = filterCodeGraphToolEntries(toolEntries, codeGraphAvailability.Available)
+	planToolDefs := agent.BuildToolDefs(toolEntries, true)
+	mainToolDefs := agent.BuildToolDefs(toolEntries, false)
 
 	ag := agent.New(agent.Args{
 		RepoDir:               repoDir,
@@ -188,6 +194,16 @@ func runReview(args []string) error {
 	outputTextWithWarnings(comments, ag.Warnings())
 
 	return nil
+}
+
+func effectiveLLMRequestTimeout(opts reviewOptions) time.Duration {
+	if opts.llmTimeout > 0 {
+		return time.Duration(opts.llmTimeout) * time.Second
+	}
+	if opts.perFileTimeout > 0 {
+		return time.Duration(opts.perFileTimeout) * time.Minute
+	}
+	return 0
 }
 
 func resolveRepoDir(input string) (string, error) {
@@ -269,12 +285,29 @@ func runPreview(repoDir string, opts reviewOptions, fileFilter *rules.FileFilter
 	return nil
 }
 
-func buildToolRegistry(collector *tool.CommentCollector, fr *tool.FileReader) *tool.Registry {
+func buildToolRegistry(collector *tool.CommentCollector, fr *tool.FileReader, codeGraphAvailability tool.CodeGraphAvailability) *tool.Registry {
 	reg := tool.NewRegistry()
 	reg.Register(tool.NewFileRead(fr))
 	reg.Register(tool.NewFileFind(fr))
 	reg.Register(tool.NewFileReadDiff(tool.DiffMap{}))
 	reg.Register(tool.NewCodeSearch(fr))
+	if codeGraphAvailability.Available {
+		reg.Register(tool.NewCodeGraph(fr.RepoDir))
+	}
 	reg.Register(&tool.CodeCommentProvider{Collector: collector})
 	return reg
+}
+
+func filterCodeGraphToolEntries(entries []toolsconfig.ToolConfigEntry, available bool) []toolsconfig.ToolConfigEntry {
+	if available {
+		return entries
+	}
+	filtered := make([]toolsconfig.ToolConfigEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Name == tool.CodeGraph.Name() {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
 }

@@ -177,11 +177,12 @@ export const en: TranslationKeys = {
   'docs.reviewFlag6Desc': 'Path to review rules JSON file',
   'docs.reviewFlag6Default': 'Built-in',
   'docs.reviewFlag7Desc': 'Max concurrent file reviews',
-  'docs.reviewFlag8Desc': 'Single task timeout (minutes)',
+  'docs.reviewFlag8Desc': 'Per-file review timeout (minutes)',
   'docs.reviewFlag9Desc': 'Output audience: human (show process) or agent (summary only)',
   'docs.reviewFlag10Desc': 'Max tool call rounds per file; only takes effect when greater than template default',
   'docs.reviewFlag10Default': 'Built-in',
   'docs.reviewFlag11Desc': 'Max concurrent git subprocesses',
+  'docs.reviewFlag12Desc': 'Single LLM request timeout (seconds); 0 uses --timeout',
   'docs.reviewNote': 'Note: <code>--from/--to</code> and <code>--commit</code> cannot be used together. When specifying <code>--from</code>, <code>--to</code> must also be specified.',
 
   'docs.viewerTitle': 'ocr viewer',
