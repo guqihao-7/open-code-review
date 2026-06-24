@@ -107,6 +107,7 @@ type reviewOptions struct {
 	model          string // --model: override resolved LLM model for this review
 	concurrency    int
 	perFileTimeout int
+	llmTimeout     int
 	maxTools       int
 	maxGitProcs    int
 	preview        bool
@@ -126,7 +127,8 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 	a.StringVarP(&opts.commit, "commit", "c", "", "single commit hash or tag to review (vs its parent)")
 	a.StringVarP(&opts.outputFormat, "format", "f", "text", "output format: text or json")
 	a.IntVar(&opts.concurrency, "concurrency", 8, "max concurrent file reviews")
-	a.IntVar(&opts.perFileTimeout, "timeout", 10, "concurrent task timeout in minutes")
+	a.IntVar(&opts.perFileTimeout, "timeout", 10, "per-file review timeout in minutes")
+	a.IntVar(&opts.llmTimeout, "llm-timeout", 0, "single LLM request timeout in seconds (0 = use --timeout)")
 	a.StringVar(&opts.audience, "audience", "human", "output audience: human (show progress) or agent (summary only)")
 	a.StringVarP(&opts.background, "background", "b", "", "optional requirement/business context for the review")
 	a.StringVar(&opts.model, "model", "", "override LLM model for this review (e.g., claude-opus-4-6)")
@@ -179,6 +181,9 @@ func parseReviewFlags(args []string) (reviewOptions, error) {
 	if opts.maxGitProcs < 0 {
 		return opts, fmt.Errorf("--max-git-procs must be a non-negative integer (0 means use default 16)")
 	}
+	if opts.llmTimeout < 0 {
+		return opts, fmt.Errorf("--llm-timeout must be a non-negative integer (0 means use --timeout)")
+	}
 
 	return opts, nil
 }
@@ -218,6 +223,7 @@ Flags:
   -c, --commit string     single commit hash or tag to review (vs its parent)
   -f, --format string     output format: text or json (default "text")
   --concurrency int       max concurrent file reviews (default 8)
+  --llm-timeout int       single LLM request timeout in seconds (0 = use --timeout)
   --max-git-procs int     max concurrent git subprocesses (default 16)
   --from string           source ref to start diff from (e.g., 'main')
   --max-tools int         max tool call rounds per file (0 = template default; min 10)
@@ -225,7 +231,7 @@ Flags:
   -p, --preview           preview which files will be reviewed without running the LLM
   --repo string           root directory of the git repository (default: current dir)
   --rule string           path to JSON file with system review rules
-  --timeout int           concurrent task timeout in minutes (default 10)
+  --timeout int           per-file review timeout in minutes (default 10)
   --to string             target ref to end diff at (e.g., 'feature-branch')
   --tools string          path to JSON tools config file (default: embedded)`)
 }

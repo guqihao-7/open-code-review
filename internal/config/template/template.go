@@ -132,6 +132,26 @@ func (t *Template) ApplyLanguage(lang string) {
 	}
 	applyLanguage(&t.MemoryCompressionTask, instruction)
 }
+
+// ApplyRequestTimeout sets the per-LLM-request timeout, in seconds, for all
+// review task conversations.
+func (t *Template) ApplyRequestTimeout(seconds int) {
+	if seconds <= 0 {
+		return
+	}
+	t.MainTask.Timeout = seconds
+	if t.PlanTask != nil {
+		t.PlanTask.Timeout = seconds
+	}
+	t.MemoryCompressionTask.Timeout = seconds
+	if t.ReLocationTask != nil {
+		t.ReLocationTask.Timeout = seconds
+	}
+	if t.ReviewFilterTask != nil {
+		t.ReviewFilterTask.Timeout = seconds
+	}
+}
+
 func (t *Template) Validate() error {
 	if t.MaxTokens <= 0 {
 		return fmt.Errorf("max_tokens must be positive")

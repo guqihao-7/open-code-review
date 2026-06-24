@@ -563,11 +563,8 @@ func (a *Agent) executeReviewFilter(ctx context.Context, d model.Diff, newPath s
 		messages = append(messages, llm.NewTextMessage(m.Role, content))
 	}
 
-	if ft.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(ft.Timeout)*time.Second)
-		defer cancel()
-	}
+	ctx, cancel := llmRequestContext(ctx, ft.Timeout)
+	defer cancel()
 
 	fs := a.session.GetOrCreateFileSession(newPath)
 	rec := fs.AppendTaskRecord(session.ReviewFilterTask, messages)
@@ -763,6 +760,13 @@ func (a *Agent) extFromPath(path string) string {
 	return strings.ToLower(basename[dot:])
 }
 
+func llmRequestContext(ctx context.Context, timeoutSeconds int) (context.Context, context.CancelFunc) {
+	if timeoutSeconds <= 0 {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, time.Duration(timeoutSeconds)*time.Second)
+}
+
 // executePlanPhase runs the plan task for a single file, sending template messages
 // with resolved placeholders and collecting the LLM response as plan guidance.
 func (a *Agent) executePlanPhase(ctx context.Context, newPath, rawDiff, changeFiles, rule string) (string, error) {
@@ -784,7 +788,10 @@ func (a *Agent) executePlanPhase(ctx context.Context, newPath, rawDiff, changeFi
 	rec := fs.AppendTaskRecord(session.PlanTask, messages)
 	startTime := time.Now()
 
-	resp, err := a.args.LLMClient.CompletionsWithCtx(ctx, llm.ChatRequest{
+	requestCtx, cancel := llmRequestContext(ctx, pt.Timeout)
+	defer cancel()
+
+	resp, err := a.args.LLMClient.CompletionsWithCtx(requestCtx, llm.ChatRequest{
 		Model:     a.args.Model,
 		Messages:  messages,
 		MaxTokens: a.args.Template.MaxTokens,
@@ -863,12 +870,14 @@ func (a *Agent) performLlmCodeReview(ctx context.Context, messages []llm.Message
 		rec := fs.AppendTaskRecord(session.MainTask, append([]llm.Message(nil), messages...))
 		startTime := time.Now()
 
-		resp, err := a.args.LLMClient.CompletionsWithCtx(ctx, llm.ChatRequest{
+		requestCtx, cancel := llmRequestContext(ctx, a.args.Template.MainTask.Timeout)
+		resp, err := a.args.LLMClient.CompletionsWithCtx(requestCtx, llm.ChatRequest{
 			Model:     a.args.Model,
 			Messages:  messages,
 			Tools:     a.args.MainToolDefs,
 			MaxTokens: a.args.Template.MaxTokens,
 		})
+		cancel()
 		duration := time.Since(startTime)
 		if err != nil {
 			rec.SetError(err, duration)

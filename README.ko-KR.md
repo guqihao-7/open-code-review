@@ -357,7 +357,8 @@ ocr review \
 | `--preview` | `-p` | `false` | LLM 실행 없이 리뷰 대상 파일 미리보기 |
 | `--format` | `-f` | `text` | Output format: `text` 또는 `json` |
 | `--concurrency` | - | `8` | 최대 동시 파일 리뷰 수 |
-| `--timeout` | - | `10` | 동시 task timeout(분) |
+| `--timeout` | - | `10` | 파일별 리뷰 전체 timeout(분) |
+| `--llm-timeout` | - | `0` | 단일 LLM 요청 timeout(초). `0`은 `--timeout` 사용 |
 | `--audience` | - | `human` | `human`(progress 표시) 또는 `agent`(summary only) |
 | `--background` | `-b` | - | 리뷰를 위한 선택적 요구사항/비즈니스 컨텍스트. `--commit` 사용 시 미지정이면 commit message에서 자동 추출 |
 | `--model` | - | - | 이번 리뷰에서 LLM model 선택 또는 override |

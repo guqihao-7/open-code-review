@@ -114,3 +114,28 @@ func TestApplyLanguage_DefaultEnglish(t *testing.T) {
 		t.Errorf("MainTask system message does not end with %q", suffix)
 	}
 }
+
+func TestApplyRequestTimeout(t *testing.T) {
+	tpl, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault() error: %v", err)
+	}
+
+	tpl.ApplyRequestTimeout(600)
+
+	if tpl.MainTask.Timeout != 600 {
+		t.Errorf("MainTask.Timeout = %d, want 600", tpl.MainTask.Timeout)
+	}
+	if tpl.PlanTask.Timeout != 600 {
+		t.Errorf("PlanTask.Timeout = %d, want 600", tpl.PlanTask.Timeout)
+	}
+	if tpl.MemoryCompressionTask.Timeout != 600 {
+		t.Errorf("MemoryCompressionTask.Timeout = %d, want 600", tpl.MemoryCompressionTask.Timeout)
+	}
+	if tpl.ReLocationTask.Timeout != 600 {
+		t.Errorf("ReLocationTask.Timeout = %d, want 600", tpl.ReLocationTask.Timeout)
+	}
+	if tpl.ReviewFilterTask.Timeout != 600 {
+		t.Errorf("ReviewFilterTask.Timeout = %d, want 600", tpl.ReviewFilterTask.Timeout)
+	}
+}

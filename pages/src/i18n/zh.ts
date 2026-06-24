@@ -177,11 +177,12 @@ export const zh: TranslationKeys = {
   'docs.reviewFlag6Desc': '评审规则的 JSON 文件路径',
   'docs.reviewFlag6Default': '内置',
   'docs.reviewFlag7Desc': '最大并发评审文件数',
-  'docs.reviewFlag8Desc': '单个并发任务超时时间（分钟）',
+  'docs.reviewFlag8Desc': '单个文件审查总超时时间（分钟）',
   'docs.reviewFlag9Desc': '输出受众：human（显示过程）或 agent（仅摘要）',
   'docs.reviewFlag10Desc': '每个文件的最大工具调用轮次；仅在大于模板默认值时生效',
   'docs.reviewFlag10Default': '内置',
   'docs.reviewFlag11Desc': '最大并发 git 子进程数',
+  'docs.reviewFlag12Desc': '单次 LLM 请求超时时间（秒）；0 表示使用 --timeout',
   'docs.reviewNote': '注意：<code>--from/--to</code> 和 <code>--commit</code> 不可同时使用。指定 <code>--from</code> 时必须同时指定 <code>--to</code>。',
 
   'docs.viewerTitle': 'ocr viewer',
