@@ -392,19 +392,19 @@ func (c *composedResolver) mergeWithSystemRule(path, rule string) string {
 // rule text while Source and Pattern still describe the user rule that won the
 // priority chain.
 func (c *composedResolver) ResolveDetail(path string) RuleDetail {
-	if detail := c.matchProjectRuleDetail(path, c.custom, "custom"); detail != nil {
+	if detail := c.matchProjectRuleDetail(c.custom, path, "custom"); detail != nil {
 		return *detail
 	}
-	if detail := c.matchProjectRuleDetail(path, c.project, "project"); detail != nil {
+	if detail := c.matchProjectRuleDetail(c.project, path, "project"); detail != nil {
 		return *detail
 	}
-	if detail := c.matchProjectRuleDetail(path, c.global, "global"); detail != nil {
+	if detail := c.matchProjectRuleDetail(c.global, path, "global"); detail != nil {
 		return *detail
 	}
 	return c.system.resolveDetail(path)
 }
 
-func (c *composedResolver) matchProjectRuleDetail(path string, pr *ProjectRule, source string) *RuleDetail {
+func (c *composedResolver) matchProjectRuleDetail(pr *ProjectRule, path string, source string) *RuleDetail {
 	entry := matchProjectRuleEntry(pr, path)
 	if entry == nil {
 		return nil
