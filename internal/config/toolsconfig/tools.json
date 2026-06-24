@@ -156,6 +156,87 @@
     }
   },
   {
+    "name": "codegraph",
+    "plan_task": true,
+    "main_task": true,
+    "definition": {
+      "name": "codegraph",
+      "description": "Use this optional CodeGraph-backed tool for structural code context when available. It is best for symbol lookup, callers, callees, impact analysis, indexed file structure, and affected tests. Use code_search instead for literal text search.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "query",
+              "callers",
+              "callees",
+              "impact",
+              "files",
+              "affected"
+            ],
+            "description": "Structural query to run. query searches symbols; callers finds functions that call a symbol; callees finds functions called by a symbol; impact estimates affected symbols; files lists indexed files; affected finds likely affected tests."
+          },
+          "search": {
+            "type": "string",
+            "description": "Symbol search text for action=query."
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Symbol name for callers, callees, or impact."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Optional symbol kind filter for query, such as function, method, class, interface, struct, type, or variable."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results for query, callers, or callees. Defaults to 10 for query and 20 for callers/callees. Values above 50 are capped."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Traversal depth for impact or affected. Defaults to 2 for impact and 5 for affected."
+          },
+          "filter": {
+            "type": "string",
+            "description": "Directory filter for files, or test glob filter for affected."
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Glob pattern for action=files."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "tree",
+              "flat",
+              "grouped"
+            ],
+            "description": "Output format for action=files. Defaults to tree."
+          },
+          "max_depth": {
+            "type": "integer",
+            "description": "Maximum tree depth for action=files."
+          },
+          "include_metadata": {
+            "type": "boolean",
+            "description": "Whether action=files should include file metadata. Defaults to true."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Changed source files for action=affected."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      }
+    }
+  },
+  {
     "name": "file_find",
     "plan_task": true,
     "main_task": true,
