@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 )
 
@@ -414,6 +415,379 @@ func TestUnsetInvalidKey(t *testing.T) {
 				t.Errorf("unsetCustomProvider(%q): err=%v, wantErr=%v", tt.name, err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestMergeModelLists(t *testing.T) {
+	tests := []struct {
+		name  string
+		lists [][]string
+		want  []string
+	}{
+		{"empty", nil, nil},
+		{"single list", [][]string{{"a", "b"}}, []string{"a", "b"}},
+		{"merge with dedup", [][]string{{"a", "b"}, {"b", "c"}}, []string{"a", "b", "c"}},
+		{"three lists", [][]string{{"x"}, {"y"}, {"x", "z"}}, []string{"x", "y", "z"}},
+		{"empty strings filtered", [][]string{{"a", "", "b"}}, []string{"a", "b"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := mergeModelLists(tc.lists...)
+			if len(got) != len(tc.want) {
+				t.Fatalf("mergeModelLists() = %v, want %v", got, tc.want)
+			}
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Errorf("[%d] = %q, want %q", i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestEnsureTelemetry(t *testing.T) {
+	cfg := &Config{}
+	if cfg.Telemetry != nil {
+		t.Fatal("Telemetry should be nil initially")
+	}
+	cfg.ensureTelemetry()
+	if cfg.Telemetry == nil {
+		t.Fatal("Telemetry should be non-nil after ensureTelemetry()")
+	}
+	cfg.ensureTelemetry()
+	if cfg.Telemetry == nil {
+		t.Fatal("Telemetry should remain non-nil on second call")
+	}
+}
+
+func TestSetConfigValueLlmURL(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "llm.url", "https://example.com/v1"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Llm.URL != "https://example.com/v1" {
+		t.Errorf("URL = %q", cfg.Llm.URL)
+	}
+}
+
+func TestSetConfigValueLlmAuthToken(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "llm.auth_token", "tok-123"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Llm.AuthToken != "tok-123" {
+		t.Errorf("AuthToken = %q", cfg.Llm.AuthToken)
+	}
+}
+
+func TestSetConfigValueLlmModel(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "llm.model", "my-model"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Llm.Model != "my-model" {
+		t.Errorf("Model = %q", cfg.Llm.Model)
+	}
+}
+
+func TestSetConfigValueLlmUseAnthropic(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "llm.use_anthropic", "false"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Llm.UseAnthropic == nil || *cfg.Llm.UseAnthropic != false {
+		t.Errorf("UseAnthropic = %v", cfg.Llm.UseAnthropic)
+	}
+}
+
+func TestSetConfigValueLlmUseAnthropicInvalid(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "llm.use_anthropic", "notbool"); err == nil {
+		t.Fatal("expected error for invalid boolean")
+	}
+}
+
+func TestSetConfigValueLanguage(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "language", "English"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Language != "English" {
+		t.Errorf("Language = %q", cfg.Language)
+	}
+}
+
+func TestSetConfigValueTelemetryEnabled(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "telemetry.enabled", "true"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Telemetry == nil || !cfg.Telemetry.Enabled {
+		t.Error("Telemetry.Enabled should be true")
+	}
+}
+
+func TestSetConfigValueTelemetryEnabledInvalid(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "telemetry.enabled", "notbool"); err == nil {
+		t.Fatal("expected error for invalid boolean")
+	}
+}
+
+func TestSetConfigValueTelemetryExporter(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "telemetry.exporter", "otlp"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Telemetry.Exporter != "otlp" {
+		t.Errorf("Exporter = %q", cfg.Telemetry.Exporter)
+	}
+}
+
+func TestSetConfigValueTelemetryOTLPEndpoint(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "telemetry.otlp_endpoint", "localhost:4317"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Telemetry.OTLPEndpoint != "localhost:4317" {
+		t.Errorf("OTLPEndpoint = %q", cfg.Telemetry.OTLPEndpoint)
+	}
+}
+
+func TestSetConfigValueTelemetryContentLogging(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "telemetry.content_logging", "true"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if !cfg.Telemetry.ContentLog {
+		t.Error("ContentLog should be true")
+	}
+}
+
+func TestSetConfigValueTelemetryContentLoggingInvalid(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "telemetry.content_logging", "notbool"); err == nil {
+		t.Fatal("expected error for invalid boolean")
+	}
+}
+
+func TestSetConfigValueLlmExtraBody(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "llm.extra_body", `{"key":"val"}`); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Llm.ExtraBody == nil {
+		t.Fatal("ExtraBody should not be nil")
+	}
+	if cfg.Llm.ExtraBody["key"] != "val" {
+		t.Errorf("ExtraBody[\"key\"] = %v", cfg.Llm.ExtraBody["key"])
+	}
+}
+
+func TestSetConfigValueLlmExtraBodyInvalid(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "llm.extra_body", "not-json"); err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestSetConfigValueUnknownKey(t *testing.T) {
+	cfg := &Config{}
+	if err := setConfigValue(cfg, "unknown.key", "val"); err == nil {
+		t.Fatal("expected error for unknown key")
+	}
+}
+
+func TestSetConfigValueProviderClearsModel(t *testing.T) {
+	cfg := &Config{Provider: "old-provider", Model: "old-model"}
+	if err := setConfigValue(cfg, "provider", "new-provider"); err != nil {
+		t.Fatalf("setConfigValue: %v", err)
+	}
+	if cfg.Model != "" {
+		t.Errorf("Model should be cleared on provider change, got %q", cfg.Model)
+	}
+}
+
+func TestRunConfigUnset_InvalidKey(t *testing.T) {
+	if err := runConfigUnset("provider"); err == nil {
+		t.Fatal("expected error for non custom_providers key")
+	}
+	if err := runConfigUnset("custom_providers."); err == nil {
+		t.Fatal("expected error for empty provider name")
+	}
+}
+
+func TestRunConfig_EmptyArgs(t *testing.T) {
+	err := runConfig(nil)
+	if err != nil {
+		t.Fatalf("runConfig with nil args should print usage, got error: %v", err)
+	}
+}
+
+func TestRunConfig_ProviderWithArgs(t *testing.T) {
+	err := runConfig([]string{"provider", "extra"})
+	if err == nil {
+		t.Fatal("expected error when provider has args")
+	}
+}
+
+func TestRunConfig_ModelWithArgs(t *testing.T) {
+	err := runConfig([]string{"model", "extra"})
+	if err == nil {
+		t.Fatal("expected error when model has args")
+	}
+}
+
+func TestDeleteCustomProvider_NotFound(t *testing.T) {
+	cfg := &Config{}
+	_, err := deleteCustomProvider(cfg, "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nil CustomProviders")
+	}
+
+	cfg.CustomProviders = map[string]ProviderEntry{"other": {}}
+	_, err = deleteCustomProvider(cfg, "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for missing provider")
+	}
+}
+
+func TestActiveModelForProvider(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      *Config
+		provider string
+		entry    ProviderEntry
+		want     string
+	}{
+		{"entry model", nil, "p", ProviderEntry{Model: "m1"}, "m1"},
+		{"cfg model", &Config{Provider: "p", Model: "m2"}, "p", ProviderEntry{}, "m2"},
+		{"entry takes precedence", &Config{Provider: "p", Model: "m2"}, "p", ProviderEntry{Model: "m1"}, "m1"},
+		{"different provider", &Config{Provider: "other", Model: "m2"}, "p", ProviderEntry{}, ""},
+		{"no model", &Config{Provider: "p"}, "p", ProviderEntry{}, ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := activeModelForProvider(tc.cfg, tc.provider, tc.entry)
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeModelList(t *testing.T) {
+	tests := []struct {
+		name   string
+		models []string
+		want   []string
+	}{
+		{"dedup", []string{"a", "b", "a"}, []string{"a", "b"}},
+		{"trim spaces", []string{" a ", " b "}, []string{"a", "b"}},
+		{"filter empty", []string{"a", "", "b"}, []string{"a", "b"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeModelList(tc.models)
+			if len(got) != len(tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Errorf("[%d] = %q, want %q", i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestParseModelListValue(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		want  int
+	}{
+		{"empty", "", 0},
+		{"json array", `["a","b"]`, 2},
+		{"comma separated", "a,b,c", 3},
+		{"bracket unquoted", "[a,b]", 2},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseModelListValue(tc.value)
+			if err != nil {
+				t.Fatalf("parseModelListValue: %v", err)
+			}
+			if len(got) != tc.want {
+				t.Errorf("got %d models, want %d: %v", len(got), tc.want, got)
+			}
+		})
+	}
+}
+
+func TestResolveConfigPath_Default(t *testing.T) {
+	t.Setenv("OCR_CONFIG_PATH", "")
+	p, err := resolveConfigPath()
+	if err != nil {
+		t.Fatalf("resolveConfigPath: %v", err)
+	}
+	if p == "" {
+		t.Fatal("expected non-empty default config path")
+	}
+}
+
+func TestResolveConfigPath_Env(t *testing.T) {
+	t.Setenv("OCR_CONFIG_PATH", "/tmp/test-config.json")
+	p, err := resolveConfigPath()
+	if err != nil {
+		t.Fatalf("resolveConfigPath: %v", err)
+	}
+	if p != "/tmp/test-config.json" {
+		t.Errorf("path = %q, want /tmp/test-config.json", p)
+	}
+}
+
+func TestLoadOrCreateConfig_NewFile(t *testing.T) {
+	cfg, err := loadOrCreateConfig(t.TempDir() + "/nonexistent.json")
+	if err != nil {
+		t.Fatalf("loadOrCreateConfig: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("expected non-nil config")
+	}
+}
+
+func TestLoadOrCreateConfig_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/bad.json"
+	if err := os.WriteFile(path, []byte("{invalid"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := loadOrCreateConfig(path)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestLoadAppConfig_NotExist(t *testing.T) {
+	cfg, err := LoadAppConfig(t.TempDir() + "/none.json")
+	if err != nil {
+		t.Fatalf("LoadAppConfig: %v", err)
+	}
+	if cfg != nil {
+		t.Fatal("expected nil config for non-existent file")
+	}
+}
+
+func TestLoadAppConfig_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/bad.json"
+	if err := os.WriteFile(path, []byte("not json"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LoadAppConfig(path)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
 	}
 }
 

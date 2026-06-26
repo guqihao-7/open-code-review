@@ -140,3 +140,110 @@ func TestParseScanFlags_HelpFlag(t *testing.T) {
 		t.Error("opts.showHelp should be true when -h is supplied")
 	}
 }
+
+func TestParseScanFlags_RejectsNegativeMaxTokensBudget(t *testing.T) {
+	_, err := parseScanFlags([]string{"--max-tokens-budget", "-100"})
+	if err == nil {
+		t.Fatal("expected error for negative --max-tokens-budget")
+	}
+	if !strings.Contains(err.Error(), "--max-tokens-budget") {
+		t.Errorf("error message = %q; want it to mention --max-tokens-budget", err.Error())
+	}
+}
+
+func TestParseScanFlags_BooleanFlags(t *testing.T) {
+	opts, err := parseScanFlags([]string{"--no-plan", "--no-dedup", "--no-summary", "--preview"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !opts.noPlan {
+		t.Error("noPlan should be true")
+	}
+	if !opts.noDedup {
+		t.Error("noDedup should be true")
+	}
+	if !opts.noSummary {
+		t.Error("noSummary should be true")
+	}
+	if !opts.preview {
+		t.Error("preview should be true")
+	}
+}
+
+func TestParseScanFlags_ModelOverride(t *testing.T) {
+	opts, err := parseScanFlags([]string{"--model", "claude-opus-4-6"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if opts.model != "claude-opus-4-6" {
+		t.Errorf("model = %q, want claude-opus-4-6", opts.model)
+	}
+}
+
+func TestParseScanFlags_AllStringFlags(t *testing.T) {
+	opts, err := parseScanFlags([]string{
+		"--tools", "/tmp/tools.json",
+		"--rule", "/tmp/rule.json",
+		"--repo", "/tmp/repo",
+		"--exclude", "*.md,*.txt",
+		"--batch", "by-language",
+		"--background", "test context",
+		"--audience", "agent",
+		"-f", "json",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if opts.toolConfigPath != "/tmp/tools.json" {
+		t.Errorf("toolConfigPath = %q", opts.toolConfigPath)
+	}
+	if opts.rulePath != "/tmp/rule.json" {
+		t.Errorf("rulePath = %q", opts.rulePath)
+	}
+	if opts.repoDir != "/tmp/repo" {
+		t.Errorf("repoDir = %q", opts.repoDir)
+	}
+	if opts.excludes != "*.md,*.txt" {
+		t.Errorf("excludes = %q", opts.excludes)
+	}
+	if opts.batch != "by-language" {
+		t.Errorf("batch = %q", opts.batch)
+	}
+	if opts.background != "test context" {
+		t.Errorf("background = %q", opts.background)
+	}
+	if opts.audience != "agent" {
+		t.Errorf("audience = %q", opts.audience)
+	}
+	if opts.outputFormat != "json" {
+		t.Errorf("outputFormat = %q", opts.outputFormat)
+	}
+}
+
+func TestParseScanFlags_IntFlags(t *testing.T) {
+	opts, err := parseScanFlags([]string{
+		"--concurrency", "16",
+		"--timeout", "20",
+		"--max-tools", "50",
+		"--max-git-procs", "32",
+		"--max-tokens-budget", "100000",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if opts.concurrency != 16 {
+		t.Errorf("concurrency = %d", opts.concurrency)
+	}
+	if opts.perFileTimeout != 20 {
+		t.Errorf("perFileTimeout = %d", opts.perFileTimeout)
+	}
+	if opts.maxTools != 50 {
+		t.Errorf("maxTools = %d", opts.maxTools)
+	}
+	if opts.maxGitProcs != 32 {
+		t.Errorf("maxGitProcs = %d", opts.maxGitProcs)
+	}
+	if opts.maxTokensBudget != 100000 {
+		t.Errorf("maxTokensBudget = %d", opts.maxTokensBudget)
+	}
+}
