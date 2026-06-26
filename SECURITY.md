@@ -43,6 +43,22 @@ Out of scope:
 - Denial-of-service attacks that require local access.
 - Social engineering attacks.
 
+## Release Signatures
+
+All release binaries and checksums are signed using [GitHub Artifact Attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) (Sigstore). Signatures are keyless — backed by GitHub Actions OIDC, with no long-lived private key. Version tags are signed with SSH keys via `git tag -s`.
+
+To verify a downloaded binary:
+
+```bash
+gh attestation verify opencodereview-linux-amd64 --repo alibaba/open-code-review
+```
+
+To verify a version tag:
+
+```bash
+git tag -v v1.6.4
+```
+
 ## Recognition
 
 We appreciate the security research community's efforts. Reporters who follow responsible disclosure will be credited in the release notes (unless they prefer to remain anonymous).
