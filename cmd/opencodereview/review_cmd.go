@@ -72,6 +72,8 @@ func runReview(args []string) error {
 		}
 	}()
 
+	opts.background = maybeAppendGitHubPRContext(context.Background(), opts.background, mcpClients, cc.RepoDir)
+
 	mcpToolDefs := mcp.CollectToolDefs(mcpClients, tools)
 	rt.PlanToolDefs = append(rt.PlanToolDefs, mcpToolDefs...)
 	rt.MainToolDefs = append(rt.MainToolDefs, mcpToolDefs...)

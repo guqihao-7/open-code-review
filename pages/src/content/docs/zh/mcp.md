@@ -62,6 +62,30 @@ MCP server 配置在用户配置文件（`~/.opencodereview/config.json`）的 `
 | `setup` | string | | server 启动前运行一次的 shell 命令（如安装依赖）。在仓库根目录运行，超时 5 分钟。 |
 | `env` | string 数组 | | 额外环境变量，`KEY=VALUE` 形式。 |
 
+## GitHub PR 上下文
+
+当某个 MCP server 暴露官方 GitHub 工具 `pull_request_read`，并可选暴露
+`issue_read` 时，OCR 会在 review 开始前预取 PR 上下文，并追加到
+`--background`。这是确定性预处理：模型不需要猜这次变更对应哪个 PR 或 issue。
+
+OCR 会从 GitHub Actions 环境变量识别目标 PR：`GITHUB_REPOSITORY`、
+`GITHUB_EVENT_NUMBER`、`GITHUB_REF`、`GITHUB_EVENT_PATH`。本地运行时可用
+`OCR_GITHUB_REPOSITORY=owner/repo` 和 `OCR_GITHUB_PR_NUMBER=123` 显式覆盖。
+
+使用官方 GitHub MCP 本地 Docker server 的示例：
+
+```bash
+export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx
+
+ocr config set mcp_servers.github.command docker
+ocr config set mcp_servers.github.args '["run","-i","--rm","-e","GITHUB_PERSONAL_ACCESS_TOKEN","-e","GITHUB_TOOLSETS","-e","GITHUB_READ_ONLY","ghcr.io/github/github-mcp-server"]'
+ocr config set mcp_servers.github.env '["GITHUB_TOOLSETS=pull_requests,issues","GITHUB_READ_ONLY=1"]'
+ocr config set mcp_servers.github.tools '["pull_request_read","issue_read"]'
+```
+
+如果 server 名称不是 `github`，设置 `OCR_GITHUB_MCP_SERVER=<name>`。如果想保留
+GitHub MCP 工具、但关闭 PR 背景预取，设置 `OCR_GITHUB_PR_CONTEXT=0`。
+
 ## 过滤工具
 
 默认注册 server 声明的每个工具。当 server 暴露的工具超出审查器所需时，用 `tools`

@@ -66,6 +66,33 @@ MCP servers live under the `mcp_servers` key in your user config file (`~/.openc
 | `setup` | string | | Shell command run once before the server starts (e.g. install deps). Runs in the repo root with a 5-minute timeout. |
 | `env` | string array | | Extra environment variables in `KEY=VALUE` form. |
 
+## GitHub PR context
+
+When a configured MCP server exposes the official GitHub tools
+`pull_request_read` and optionally `issue_read`, OCR can prefetch PR context
+before the review starts and append it to `--background`. This is deterministic:
+the model does not have to guess which PR or issue to inspect.
+
+OCR detects the target PR from GitHub Actions environment variables
+(`GITHUB_REPOSITORY`, `GITHUB_EVENT_NUMBER`, `GITHUB_REF`, and
+`GITHUB_EVENT_PATH`). For local runs, override detection with
+`OCR_GITHUB_REPOSITORY=owner/repo` and `OCR_GITHUB_PR_NUMBER=123`.
+
+Example with the official local GitHub MCP server in Docker:
+
+```bash
+export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx
+
+ocr config set mcp_servers.github.command docker
+ocr config set mcp_servers.github.args '["run","-i","--rm","-e","GITHUB_PERSONAL_ACCESS_TOKEN","-e","GITHUB_TOOLSETS","-e","GITHUB_READ_ONLY","ghcr.io/github/github-mcp-server"]'
+ocr config set mcp_servers.github.env '["GITHUB_TOOLSETS=pull_requests,issues","GITHUB_READ_ONLY=1"]'
+ocr config set mcp_servers.github.tools '["pull_request_read","issue_read"]'
+```
+
+If your server is not named `github`, set `OCR_GITHUB_MCP_SERVER=<name>`.
+Set `OCR_GITHUB_PR_CONTEXT=0` to disable this prefetch while keeping the MCP
+tools available to the review agent.
+
 ## Filtering tools
 
 By default every tool a server advertises is registered. Set `tools` to an
