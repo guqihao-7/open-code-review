@@ -28,10 +28,10 @@ OCR は **Model Context Protocol（MCP）クライアント**として動作で�
 #### MCP server を追加する
 
 `ocr config set` コマンドはこれらのフィールドを非対話的に書き込みます。配列
-フィールド（`args`、`env`、`tools`）は JSON 配列文字列を受け取ります：
+フィールド（`args`、`env`、`headers`、`tools`）は JSON 配列文字列を受け取ります：
 
 ```bash
-# 最小構成：コマンドだけ
+# 最小 stdio 構成：コマンドだけ
 ocr config set mcp_servers.docs.command npx
 
 # 引数
@@ -45,6 +45,15 @@ ocr config set mcp_servers.docs.setup "npm install -g @acme/docs-mcp-server"
 
 # 環境変数（KEY=VALUE エントリ）
 ocr config set mcp_servers.docs.env '["DOCS_TOKEN=secret", "DOCS_REGION=eu"]'
+
+# Streamable HTTP server
+ocr config set mcp_servers.docs.transport http
+ocr config set mcp_servers.docs.url https://docs.example.com/mcp
+ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
+
+# 旧式 SSE server
+ocr config set mcp_servers.docs.transport sse
+ocr config set mcp_servers.docs.url https://docs.example.com/sse
 ```
 
 #### MCP server を削除する
@@ -59,11 +68,15 @@ MCP server はユーザー設定ファイル（`~/.opencodereview/config.json`�
 
 | フィールド | 型 | 必須 | 説明 |
 |---|---|---|---|
-| `command` | string | ✓ | MCP server を起動する実行ファイル（`npx`、`uvx`、絶対パスなど）。 |
-| `args` | string 配列 | | `command` に渡す引数。 |
+| `transport` | string | | 既定は `stdio`、`http` は streamable HTTP、`sse` は旧式 SSE。 |
+| `command` | string | stdio のみ | MCP server を起動する実行ファイル（`npx`、`uvx`、絶対パスなど）。 |
+| `args` | string 配列 | | stdio の `command` に渡す引数。 |
+| `env` | string 配列 | | stdio server 用の追加環境変数、`KEY=VALUE` 形式。 |
+| `url` | string | HTTP/SSE のみ | MCP endpoint URL。 |
+| `headers` | string 配列 | | HTTP header、`Header=Value` 形式。値は `${DOCS_TOKEN}` のような環境変数展開に対応。 |
 | `tools` | string 配列 | | 登録するツール名の許可リスト。空 = server が提供する全ツールを登録。 |
 | `setup` | string | | server 起動前に一度実行される shell コマンド（依存関係のインストールなど）。リポジトリのルートで実行、タイムアウト 5 分。 |
-| `env` | string 配列 | | 追加の環境変数、`KEY=VALUE` 形式。 |
+| `disable_standalone_sse` | boolean | | streamable HTTP で任意の standalone SSE stream をスキップする。 |
 
 ## ツールのフィルタリング
 
@@ -99,8 +112,8 @@ server をオンデマンドでインストールまたはビルドするのに�
 stdout の `--format json` 出力を汚染することはありません：
 
 - `Running setup for MCP server "x": …` —— setup コマンドを実行中。
-- `failed to start MCP server "x": …` —— サブプロセスが 30 秒の初期化タイムアウト内に
-  接続できなかったか、`command` が `PATH` にない。
+- `failed to start MCP server "x": …` —— stdio サブプロセスが 30 秒の初期化タイムアウト内に
+  接続できなかった、`command` が `PATH` にない、または HTTP/SSE endpoint が接続や header を拒否した。
 - `tool "y" conflicts with built-in tool, skipping` —— server のツールを改名するか、
   `tools` から外す。
 - `allowed tool "y" not found in server's tool list` —— `tools` の名前が server の提供

@@ -455,6 +455,23 @@ func TestSetMCPServerValue_Command(t *testing.T) {
 	}
 }
 
+func TestSetMCPServerValue_Transport(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.transport", "streamable_http"); err != nil {
+		t.Fatalf("setMCPServerValue: %v", err)
+	}
+	if got := cfg.MCPServers["my-server"].Transport; got != "http" {
+		t.Errorf("Transport = %q, want %q", got, "http")
+	}
+}
+
+func TestSetMCPServerValue_TransportInvalid(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.transport", "websocket"); err == nil {
+		t.Fatal("expected error for invalid transport")
+	}
+}
+
 func TestSetMCPServerValue_CommandEmpty(t *testing.T) {
 	cfg := &Config{}
 	if err := setMCPServerValue(cfg, "mcp_servers.my-server.command", ""); err == nil {
@@ -505,6 +522,48 @@ func TestSetMCPServerValue_EnvInvalidFormat(t *testing.T) {
 	}
 }
 
+func TestSetMCPServerValue_URL(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.url", " https://example.com/mcp "); err != nil {
+		t.Fatalf("setMCPServerValue: %v", err)
+	}
+	if got := cfg.MCPServers["my-server"].URL; got != "https://example.com/mcp" {
+		t.Errorf("URL = %q, want trimmed URL", got)
+	}
+}
+
+func TestSetMCPServerValue_URLEmpty(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.url", " "); err == nil {
+		t.Fatal("expected error for empty URL")
+	}
+}
+
+func TestSetMCPServerValue_Headers(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.headers", `["Authorization=Bearer ${TOKEN}","X-Tenant=docs"]`); err != nil {
+		t.Fatalf("setMCPServerValue: %v", err)
+	}
+	headers := cfg.MCPServers["my-server"].Headers
+	if len(headers) != 2 || headers[0] != "Authorization=Bearer ${TOKEN}" {
+		t.Errorf("Headers = %v", headers)
+	}
+}
+
+func TestSetMCPServerValue_HeadersInvalidJSON(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.headers", "not-json"); err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestSetMCPServerValue_HeadersInvalidFormat(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.headers", `["NoEquals"]`); err == nil {
+		t.Fatal("expected error for invalid header format")
+	}
+}
+
 func TestSetMCPServerValue_Tools(t *testing.T) {
 	cfg := &Config{}
 	if err := setMCPServerValue(cfg, "mcp_servers.my-server.tools", `["search","read","search"]`); err != nil {
@@ -537,6 +596,16 @@ func TestSetMCPServerValue_Setup(t *testing.T) {
 	}
 	if cfg.MCPServers["my-server"].Setup != "init-script.sh" {
 		t.Errorf("Setup = %q", cfg.MCPServers["my-server"].Setup)
+	}
+}
+
+func TestSetMCPServerValue_DisableStandaloneSSE(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.disable_standalone_sse", "true"); err != nil {
+		t.Fatalf("setMCPServerValue: %v", err)
+	}
+	if !cfg.MCPServers["my-server"].DisableStandaloneSSE {
+		t.Fatal("DisableStandaloneSSE = false, want true")
 	}
 }
 

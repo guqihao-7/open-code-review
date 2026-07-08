@@ -24,11 +24,11 @@ MCP server，这些 server 暴露的工具就会提供给审查 agent —— 与
 
 #### 添加 MCP server
 
-`ocr config set` 命令以非交互方式写入这些字段。数组字段（`args`、`env`、`tools`）
+`ocr config set` 命令以非交互方式写入这些字段。数组字段（`args`、`env`、`headers`、`tools`）
 接受 JSON 数组字符串：
 
 ```bash
-# 最小配置：只给命令
+# 最小 stdio 配置：只给命令
 ocr config set mcp_servers.docs.command npx
 
 # 参数
@@ -42,6 +42,15 @@ ocr config set mcp_servers.docs.setup "npm install -g @acme/docs-mcp-server"
 
 # 环境变量（KEY=VALUE 条目）
 ocr config set mcp_servers.docs.env '["DOCS_TOKEN=secret", "DOCS_REGION=eu"]'
+
+# Streamable HTTP server
+ocr config set mcp_servers.docs.transport http
+ocr config set mcp_servers.docs.url https://docs.example.com/mcp
+ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
+
+# 旧版 SSE server
+ocr config set mcp_servers.docs.transport sse
+ocr config set mcp_servers.docs.url https://docs.example.com/sse
 ```
 
 #### 移除 MCP server
@@ -56,11 +65,15 @@ MCP server 配置在用户配置文件（`~/.opencodereview/config.json`）的 `
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `command` | string | ✓ | 启动 MCP server 的可执行文件（如 `npx`、`uvx`、绝对路径）。 |
-| `args` | string 数组 | | 传给 `command` 的参数。 |
+| `transport` | string | | 默认为 `stdio`，`http` 表示 streamable HTTP，`sse` 表示旧版 SSE。 |
+| `command` | string | 仅 stdio | 启动 MCP server 的可执行文件（如 `npx`、`uvx`、绝对路径）。 |
+| `args` | string 数组 | | 传给 stdio `command` 的参数。 |
+| `env` | string 数组 | | stdio server 的额外环境变量，`KEY=VALUE` 形式。 |
+| `url` | string | 仅 HTTP/SSE | MCP 端点 URL。 |
+| `headers` | string 数组 | | HTTP 头，`Header=Value` 形式。值支持 `${DOCS_TOKEN}` 这类环境变量展开。 |
 | `tools` | string 数组 | | 要注册的工具名白名单。为空 = 注册该 server 提供的全部工具。 |
 | `setup` | string | | server 启动前运行一次的 shell 命令（如安装依赖）。在仓库根目录运行，超时 5 分钟。 |
-| `env` | string 数组 | | 额外环境变量，`KEY=VALUE` 形式。 |
+| `disable_standalone_sse` | boolean | | streamable HTTP 下跳过可选的独立 SSE 流。 |
 
 ## 过滤工具
 
@@ -93,8 +106,8 @@ MCP 工具名与内置工具共享同一个命名空间。如果某个 server �
 的 `--format json` 输出：
 
 - `Running setup for MCP server "x": …` —— 正在执行 setup 命令。
-- `failed to start MCP server "x": …` —— 子进程未在 30 秒初始化超时内连接成功，或
-  `command` 不在 `PATH` 中。
+- `failed to start MCP server "x": …` —— stdio 子进程未在 30 秒初始化超时内连接成功、
+  `command` 不在 `PATH` 中，或 HTTP/SSE 端点拒绝了连接或请求头。
 - `tool "y" conflicts with built-in tool, skipping` —— 重命名该 server 的工具，或将其
   从 `tools` 中去掉。
 - `allowed tool "y" not found in server's tool list` —— `tools` 中的名字与 server 提供

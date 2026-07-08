@@ -213,8 +213,13 @@ func initMCPClients(ctx context.Context, cfg *Config, tools *tool.Registry, repo
 	var clients []*mcp.Client
 	for _, name := range mcpNames {
 		serverCfg := cfg.MCPServers[name]
-		if serverCfg.Command == "" {
+		transport := normalizeMCPTransport(serverCfg.Transport)
+		if transport == "stdio" && serverCfg.Command == "" {
 			fmt.Fprintf(os.Stderr, "[ocr] WARNING: MCP server %q has no command configured, skipping\n", name)
+			continue
+		}
+		if (transport == "http" || transport == "sse") && serverCfg.URL == "" {
+			fmt.Fprintf(os.Stderr, "[ocr] WARNING: MCP server %q has no URL configured for %s transport, skipping\n", name, transport)
 			continue
 		}
 		if serverCfg.Setup != "" {
@@ -239,7 +244,18 @@ func initMCPClients(ctx context.Context, cfg *Config, tools *tool.Registry, repo
 		}
 
 		initCtx, initCancel := context.WithTimeout(ctx, 30*time.Second)
-		mc, err := mcp.NewClient(initCtx, name, serverCfg.Command, serverCfg.Args, serverCfg.Env, repoDir, version)
+		mc, err := mcp.NewClientWithConfig(initCtx, mcp.ClientConfig{
+			Name:                 name,
+			Transport:            serverCfg.Transport,
+			Command:              serverCfg.Command,
+			Args:                 serverCfg.Args,
+			Env:                  serverCfg.Env,
+			URL:                  serverCfg.URL,
+			Headers:              serverCfg.Headers,
+			Dir:                  repoDir,
+			Version:              version,
+			DisableStandaloneSSE: serverCfg.DisableStandaloneSSE,
+		})
 		initCancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[ocr] WARNING: failed to start MCP server %q: %v\n", name, err)

@@ -691,11 +691,15 @@ Config file: `~/.opencodereview/config.json`
 | `llm.extra_headers` | string | Comma-separated `key=value` HTTP headers |
 | `llm.model` | string | `claude-opus-4-6` |
 | `llm.use_anthropic` | boolean | `true` \| `false` |
-| `mcp_servers.<name>.command` | string | Command to start the MCP server |
+| `mcp_servers.<name>.transport` | string | `stdio` (default), `http`, or `sse` |
+| `mcp_servers.<name>.command` | string | Command to start the stdio MCP server |
 | `mcp_servers.<name>.args` | array | Command-line arguments for the MCP server |
 | `mcp_servers.<name>.env` | array | Environment variables in `KEY=VALUE` format |
+| `mcp_servers.<name>.url` | string | HTTP/SSE MCP endpoint URL |
+| `mcp_servers.<name>.headers` | array | HTTP headers in `Header=Value` format; values support environment expansion |
 | `mcp_servers.<name>.tools` | array | Allowed tool names (empty = all tools) |
 | `mcp_servers.<name>.setup` | string | Setup command to run before starting the server |
+| `mcp_servers.<name>.disable_standalone_sse` | boolean | Disable the optional standalone SSE stream for streamable HTTP |
 | `language` | string | Any language name, e.g. `English`, `Chinese` (default: `English`) |
 | `telemetry.enabled` | boolean | `true` \| `false` |
 | `telemetry.exporter` | string | `console` \| `otlp` |
@@ -706,17 +710,23 @@ Environment variables take precedence over the config file.
 
 ### MCP Server
 
-Open Code Review supports [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers, allowing the review agent to use external tools during code review via the stdio transport.
+Open Code Review supports [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers, allowing the review agent to use external tools during code review via stdio, streamable HTTP, or legacy SSE transports.
 
 Configure MCP servers via the CLI:
 
 ```bash
-# Add an MCP server
+# Add a stdio MCP server
 ocr config set mcp_servers.<name>.command <command>
 ocr config set mcp_servers.<name>.args '["arg1","arg2"]'
 ocr config set mcp_servers.<name>.env '["KEY=VALUE"]'
 ocr config set mcp_servers.<name>.tools '["tool_name"]'
 ocr config set mcp_servers.<name>.setup '<setup command>'
+
+# Add a streamable HTTP MCP server
+ocr config set mcp_servers.<name>.transport http
+ocr config set mcp_servers.<name>.url https://docs.example.com/mcp
+ocr config set mcp_servers.<name>.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
+ocr config set mcp_servers.<name>.tools '["search_docs","read_doc"]'
 
 # Delete an MCP server
 ocr config unset mcp_servers.<name>
@@ -724,11 +734,15 @@ ocr config unset mcp_servers.<name>
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `command` | Yes | The executable command to start the MCP server |
-| `args` | No | Command-line arguments passed to the server |
-| `env` | No | Environment variables in `KEY=VALUE` format |
+| `transport` | No | `stdio` (default), `http` for streamable HTTP, or `sse` for legacy SSE |
+| `command` | stdio only | The executable command to start the MCP server |
+| `args` | No | Command-line arguments passed to the stdio server |
+| `env` | No | Environment variables in `KEY=VALUE` format for stdio servers |
+| `url` | HTTP/SSE only | MCP endpoint URL |
+| `headers` | No | HTTP headers in `Header=Value` format; values support environment expansion such as `${DOCS_TOKEN}` |
 | `tools` | No | Allowed tool names; if empty, all tools from the server are available |
 | `setup` | No | A shell command to run before starting the server (e.g. build an index) |
+| `disable_standalone_sse` | No | For streamable HTTP, skip the optional standalone SSE stream |
 
 > **Note:** If an MCP tool's name conflicts with a built-in tool, it will be skipped with a warning. The `setup` command has a 5-minute timeout.
 

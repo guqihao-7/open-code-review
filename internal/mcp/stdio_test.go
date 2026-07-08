@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"runtime"
 	"testing"
@@ -22,6 +24,13 @@ func TestMain(m *testing.M) {
 }
 
 func runTestMCPServer() {
+	server := newTestMCPServer()
+	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func newTestMCPServer() *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "test-server", Version: "v0.0.1"},
 		nil,
@@ -49,10 +58,7 @@ func runTestMCPServer() {
 			}, nil
 		},
 	)
-
-	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
-		log.Fatal(err)
-	}
+	return server
 }
 
 func TestNewClient_Stdio(t *testing.T) {
@@ -105,6 +111,62 @@ func TestNewClient_Stdio_BadCommand(t *testing.T) {
 	_, err := NewClient(ctx, "bad", "/nonexistent/mcp-server-binary", nil, nil, "", "v0.0.1")
 	if err == nil {
 		t.Fatal("expected error for bad command, got nil")
+	}
+}
+
+func TestNewClient_StreamableHTTP(t *testing.T) {
+	t.Setenv("OCR_TEST_MCP_TOKEN", "secret")
+
+	handler := mcp.NewStreamableHTTPHandler(func(req *http.Request) *mcp.Server {
+		if got := req.Header.Get("Authorization"); got != "Bearer secret" {
+			t.Errorf("Authorization header = %q, want %q", got, "Bearer secret")
+		}
+		return newTestMCPServer()
+	}, nil)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	ctx := context.Background()
+	c, err := NewClientWithConfig(ctx, ClientConfig{
+		Name:                 "http-srv",
+		Transport:            "http",
+		URL:                  server.URL,
+		Headers:              []string{"Authorization=Bearer ${OCR_TEST_MCP_TOKEN}"},
+		Version:              "v0.0.1",
+		DisableStandaloneSSE: true,
+	})
+	if err != nil {
+		t.Fatalf("NewClientWithConfig: %v", err)
+	}
+	defer c.Close()
+
+	found := false
+	for _, tool := range c.Tools() {
+		if tool.Name == "echo" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected echo tool in Tools()")
+	}
+
+	result, err := c.CallTool(ctx, "echo", map[string]any{"message": "hello"})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	if result != "echo: hello" {
+		t.Errorf("CallTool result = %q, want %q", result, "echo: hello")
+	}
+}
+
+func TestNewClientWithConfig_MissingHTTPURL(t *testing.T) {
+	_, err := NewClientWithConfig(context.Background(), ClientConfig{
+		Name:      "missing-url",
+		Transport: "http",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing HTTP URL")
 	}
 }
 

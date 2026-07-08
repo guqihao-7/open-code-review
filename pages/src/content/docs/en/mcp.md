@@ -29,10 +29,10 @@ cover it — MCP is for reaching beyond the checkout.
 #### Adding an MCP server
 
 The `ocr config set` command writes these fields non-interactively. Array
-fields (`args`, `env`, `tools`) take a JSON array string:
+fields (`args`, `env`, `headers`, `tools`) take a JSON array string:
 
 ```bash
-# Minimal: just a command
+# Minimal stdio server: just a command
 ocr config set mcp_servers.docs.command npx
 
 # Arguments
@@ -46,6 +46,15 @@ ocr config set mcp_servers.docs.setup "npm install -g @acme/docs-mcp-server"
 
 # Environment variables (KEY=VALUE entries)
 ocr config set mcp_servers.docs.env '["DOCS_TOKEN=secret", "DOCS_REGION=eu"]'
+
+# Streamable HTTP server
+ocr config set mcp_servers.docs.transport http
+ocr config set mcp_servers.docs.url https://docs.example.com/mcp
+ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
+
+# Legacy SSE server
+ocr config set mcp_servers.docs.transport sse
+ocr config set mcp_servers.docs.url https://docs.example.com/sse
 ```
 
 #### Removing an MCP server
@@ -60,11 +69,15 @@ MCP servers live under the `mcp_servers` key in your user config file (`~/.openc
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `command` | string | ✓ | Executable that starts the MCP server (e.g. `npx`, `uvx`, an absolute path). |
-| `args` | string array | | Arguments passed to `command`. |
+| `transport` | string | | `stdio` by default, `http` for streamable HTTP, or `sse` for legacy SSE. |
+| `command` | string | stdio only | Executable that starts the MCP server (e.g. `npx`, `uvx`, an absolute path). |
+| `args` | string array | | Arguments passed to the stdio `command`. |
+| `env` | string array | | Extra environment variables in `KEY=VALUE` form for stdio servers. |
+| `url` | string | HTTP/SSE only | MCP endpoint URL. |
+| `headers` | string array | | HTTP headers in `Header=Value` form. Values support environment expansion such as `${DOCS_TOKEN}`. |
 | `tools` | string array | | Allowlist of tool names to register. Empty = register every tool the server offers. |
 | `setup` | string | | Shell command run once before the server starts (e.g. install deps). Runs in the repo root with a 5-minute timeout. |
-| `env` | string array | | Extra environment variables in `KEY=VALUE` form. |
+| `disable_standalone_sse` | boolean | | For streamable HTTP, skip the optional standalone SSE stream. |
 
 ## Filtering tools
 
@@ -102,8 +115,9 @@ All MCP diagnostics go to **stderr**, prefixed with `[ocr]`, so they never
 pollute `--format json` output on stdout:
 
 - `Running setup for MCP server "x": …` — the setup command is executing.
-- `failed to start MCP server "x": …` — the subprocess didn't connect
-  within the 30-second init timeout, or `command` isn't on `PATH`.
+- `failed to start MCP server "x": …` — the stdio subprocess didn't connect
+  within the 30-second init timeout, `command` isn't on `PATH`, or an HTTP/SSE
+  endpoint rejected the connection or headers.
 - `tool "y" conflicts with built-in tool, skipping` — rename the server's
   tool or drop it from `tools`.
 - `allowed tool "y" not found in server's tool list` — the name in `tools`
