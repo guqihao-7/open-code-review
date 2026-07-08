@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
+	"golang.org/x/net/http/httpguts"
 )
 
 // ClientConfig describes how to connect to a single MCP server.
@@ -151,6 +152,10 @@ func httpClientWithHeaders(entries []string) (*http.Client, error) {
 		if !ok || key == "" {
 			return nil, fmt.Errorf("invalid header entry %q: must be in Header=Value format", entry)
 		}
+		if !httpguts.ValidHeaderFieldName(key) {
+			return nil, fmt.Errorf("invalid header name %q", key)
+		}
+		// Values may contain auth material; expand env vars only at request setup and never log them.
 		headers.Add(key, os.ExpandEnv(value))
 	}
 	return &http.Client{

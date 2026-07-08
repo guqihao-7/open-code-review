@@ -18,6 +18,24 @@ func TestSetConfigValueAuthHeaderNormalizesKnownValues(t *testing.T) {
 	}
 }
 
+func TestConfigDisplayValueMasksSensitiveValues(t *testing.T) {
+	tests := []struct {
+		key   string
+		value string
+		want  string
+	}{
+		{"providers.openai.api_key", "sk-1234567890", "sk-1***7890"},
+		{"llm.auth_token", "token-1234567890", "toke***7890"},
+		{"mcp_servers.yuque.headers", `["Authorization=Bearer secret-token"]`, "***"},
+		{"mcp_servers.yuque.url", "https://example.com/mcp", "https://example.com/mcp"},
+	}
+	for _, tc := range tests {
+		if got := configDisplayValue(tc.key, tc.value); got != tc.want {
+			t.Errorf("configDisplayValue(%q, %q) = %q, want %q", tc.key, tc.value, got, tc.want)
+		}
+	}
+}
+
 func TestSetConfigValueAuthHeaderRejectsCustomHeader(t *testing.T) {
 	cfg := &Config{}
 

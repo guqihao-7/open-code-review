@@ -85,13 +85,20 @@ func runConfigSet(key, value string) error {
 		return err
 	}
 
-	displayValue := value
-	normalizedKey := strings.ToLower(strings.ReplaceAll(key, "_", ""))
-	if strings.HasSuffix(normalizedKey, "apikey") || strings.HasSuffix(normalizedKey, "authtoken") {
-		displayValue = maskKey(value)
-	}
-	fmt.Printf("Set %s = %s\n", key, displayValue)
+	fmt.Printf("Set %s = %s\n", key, configDisplayValue(key, value))
 	return nil
+}
+
+func configDisplayValue(key, value string) string {
+	normalizedKey := strings.ToLower(strings.ReplaceAll(key, "_", ""))
+	if strings.HasSuffix(normalizedKey, "apikey") ||
+		strings.HasSuffix(normalizedKey, "authtoken") {
+		return maskKey(value)
+	}
+	if strings.HasSuffix(normalizedKey, "headers") {
+		return "***"
+	}
+	return value
 }
 
 func runConfigUnset(key string) error {
