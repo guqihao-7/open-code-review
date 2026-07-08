@@ -86,7 +86,7 @@ func NewClientWithConfig(ctx context.Context, cfg ClientConfig) (*Client, error)
 }
 
 func newTransport(cfg ClientConfig) (mcpsdk.Transport, error) {
-	switch normalizeTransport(cfg.Transport) {
+	switch NormalizeTransport(cfg.Transport) {
 	case "stdio":
 		if cfg.Command == "" {
 			return nil, fmt.Errorf("command is required for stdio transport")
@@ -127,7 +127,7 @@ func newTransport(cfg ClientConfig) (mcpsdk.Transport, error) {
 	}
 }
 
-func normalizeTransport(transport string) string {
+func NormalizeTransport(transport string) string {
 	switch strings.ToLower(strings.TrimSpace(transport)) {
 	case "", "stdio":
 		return "stdio"
@@ -136,7 +136,7 @@ func normalizeTransport(transport string) string {
 	case "sse":
 		return "sse"
 	default:
-		return strings.ToLower(strings.TrimSpace(transport))
+		return ""
 	}
 }
 

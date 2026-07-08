@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/open-code-review/open-code-review/internal/llm"
+	"github.com/open-code-review/open-code-review/internal/mcp"
 )
 
 // Default config file location: ~/.opencodereview/config.json
@@ -544,11 +545,8 @@ func setMCPServerValue(cfg *Config, key, value string) error {
 
 	switch field {
 	case "transport":
-		normalized := normalizeMCPTransport(value)
+		normalized := mcp.NormalizeTransport(value)
 		if normalized == "" {
-			return fmt.Errorf("MCP server transport cannot be empty")
-		}
-		if normalized != "stdio" && normalized != "http" && normalized != "sse" {
 			return fmt.Errorf("invalid MCP server transport %q: must be stdio, http, or sse", value)
 		}
 		entry.Transport = normalized
@@ -624,19 +622,6 @@ func setMCPServerValue(cfg *Config, key, value string) error {
 
 	cfg.MCPServers[name] = entry
 	return nil
-}
-
-func normalizeMCPTransport(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "", "stdio":
-		return "stdio"
-	case "http", "streamable", "streamable_http", "streamable-http":
-		return "http"
-	case "sse":
-		return "sse"
-	default:
-		return strings.ToLower(strings.TrimSpace(value))
-	}
 }
 
 func (c *Config) ensureTelemetry() {

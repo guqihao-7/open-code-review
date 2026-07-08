@@ -213,7 +213,7 @@ func initMCPClients(ctx context.Context, cfg *Config, tools *tool.Registry, repo
 	var clients []*mcp.Client
 	for _, name := range mcpNames {
 		serverCfg := cfg.MCPServers[name]
-		transport := normalizeMCPTransport(serverCfg.Transport)
+		transport := mcp.NormalizeTransport(serverCfg.Transport)
 		if transport == "stdio" && serverCfg.Command == "" {
 			fmt.Fprintf(os.Stderr, "[ocr] WARNING: MCP server %q has no command configured, skipping\n", name)
 			continue
@@ -246,7 +246,7 @@ func initMCPClients(ctx context.Context, cfg *Config, tools *tool.Registry, repo
 		initCtx, initCancel := context.WithTimeout(ctx, 30*time.Second)
 		mc, err := mcp.NewClientWithConfig(initCtx, mcp.ClientConfig{
 			Name:                 name,
-			Transport:            serverCfg.Transport,
+			Transport:            transport,
 			Command:              serverCfg.Command,
 			Args:                 serverCfg.Args,
 			Env:                  serverCfg.Env,
