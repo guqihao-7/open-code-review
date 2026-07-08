@@ -213,7 +213,11 @@ func initMCPClients(ctx context.Context, cfg *Config, tools *tool.Registry, repo
 	var clients []*mcp.Client
 	for _, name := range mcpNames {
 		serverCfg := cfg.MCPServers[name]
-		transport := mcp.NormalizeTransport(serverCfg.Transport)
+		transport := serverCfg.normalizedTransport()
+		if transport == "" {
+			fmt.Fprintf(os.Stderr, "[ocr] WARNING: MCP server %q has unsupported transport %q, skipping\n", name, serverCfg.transportValue())
+			continue
+		}
 		if transport == "stdio" && serverCfg.Command == "" {
 			fmt.Fprintf(os.Stderr, "[ocr] WARNING: MCP server %q has no command configured, skipping\n", name)
 			continue

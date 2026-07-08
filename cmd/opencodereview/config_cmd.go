@@ -202,6 +202,7 @@ type ProviderEntry struct {
 // MCPServerConfig holds configuration for a single MCP server.
 type MCPServerConfig struct {
 	Transport            string   `json:"transport,omitempty"` // "stdio" (default), "http", or "sse"
+	Type                 string   `json:"type,omitempty"`      // Alias for transport, matching common MCP config files.
 	Command              string   `json:"command,omitempty"`
 	Args                 []string `json:"args,omitempty"`
 	Env                  []string `json:"env,omitempty"`
@@ -210,6 +211,17 @@ type MCPServerConfig struct {
 	Tools                []string `json:"tools,omitempty"`
 	Setup                string   `json:"setup,omitempty"`
 	DisableStandaloneSSE bool     `json:"disable_standalone_sse,omitempty"`
+}
+
+func (c MCPServerConfig) transportValue() string {
+	if strings.TrimSpace(c.Transport) != "" {
+		return c.Transport
+	}
+	return c.Type
+}
+
+func (c MCPServerConfig) normalizedTransport() string {
+	return mcp.NormalizeTransport(c.transportValue())
 }
 
 // Config represents the user-level configuration file (~/.opencodereview/config.json).
@@ -379,7 +391,7 @@ func setConfigValue(cfg *Config, key, value string) error {
 		}
 		cfg.Llm.ExtraBody = m
 	default:
-		return fmt.Errorf("unknown config key: %s\nSupported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, mcp_servers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, llm.extra_headers, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging\nProvider fields: api_key, url, protocol, model, models, auth_header, extra_body, extra_headers\nMCP server fields: transport, command, args, env, url, headers, tools, setup, disable_standalone_sse", key)
+		return fmt.Errorf("unknown config key: %s\nSupported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, mcp_servers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, llm.extra_headers, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging\nProvider fields: api_key, url, protocol, model, models, auth_header, extra_body, extra_headers\nMCP server fields: transport, type, command, args, env, url, headers, tools, setup, disable_standalone_sse", key)
 	}
 	return nil
 }
@@ -544,12 +556,16 @@ func setMCPServerValue(cfg *Config, key, value string) error {
 	entry := cfg.MCPServers[name]
 
 	switch field {
-	case "transport":
+	case "transport", "type":
 		normalized := mcp.NormalizeTransport(value)
 		if normalized == "" {
 			return fmt.Errorf("invalid MCP server transport %q: must be stdio, http, or sse", value)
 		}
-		entry.Transport = normalized
+		if field == "type" {
+			entry.Type = normalized
+		} else {
+			entry.Transport = normalized
+		}
 	case "command":
 		if value == "" {
 			return fmt.Errorf("MCP server command cannot be empty")
@@ -617,7 +633,7 @@ func setMCPServerValue(cfg *Config, key, value string) error {
 		}
 		entry.DisableStandaloneSSE = b
 	default:
-		return fmt.Errorf("unknown MCP server field %q: supported fields are transport, command, args, env, url, headers, tools, setup, disable_standalone_sse", field)
+		return fmt.Errorf("unknown MCP server field %q: supported fields are transport, type, command, args, env, url, headers, tools, setup, disable_standalone_sse", field)
 	}
 
 	cfg.MCPServers[name] = entry

@@ -692,6 +692,7 @@ Config file: `~/.opencodereview/config.json`
 | `llm.model` | string | `claude-opus-4-6` |
 | `llm.use_anthropic` | boolean | `true` \| `false` |
 | `mcp_servers.<name>.transport` | string | `stdio` (default), `http`, or `sse` |
+| `mcp_servers.<name>.type` | string | Alias for `transport`, accepted for common MCP config compatibility |
 | `mcp_servers.<name>.command` | string | Command to start the stdio MCP server |
 | `mcp_servers.<name>.args` | array | Command-line arguments for the MCP server |
 | `mcp_servers.<name>.env` | array | Environment variables in `KEY=VALUE` format |
@@ -724,6 +725,8 @@ ocr config set mcp_servers.<name>.setup '<setup command>'
 
 # Add a streamable HTTP MCP server
 ocr config set mcp_servers.<name>.transport http
+# "type" is also accepted as an alias:
+# ocr config set mcp_servers.<name>.type http
 ocr config set mcp_servers.<name>.url https://docs.example.com/mcp
 ocr config set mcp_servers.<name>.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
 ocr config set mcp_servers.<name>.tools '["search_docs","read_doc"]'
@@ -735,6 +738,7 @@ ocr config unset mcp_servers.<name>
 | Field | Required | Description |
 |-------|----------|-------------|
 | `transport` | No | `stdio` (default), `http` for streamable HTTP, or `sse` for legacy SSE |
+| `type` | No | Alias for `transport`, useful when copying common MCP config snippets that use `type: "http"` |
 | `command` | stdio only | The executable command to start the MCP server |
 | `args` | No | Command-line arguments passed to the stdio server |
 | `env` | No | Environment variables in `KEY=VALUE` format for stdio servers |

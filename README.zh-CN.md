@@ -677,6 +677,7 @@ OCR 通过四层优先级链解析评审规则。每层采用首次匹配原则�
 | `llm.model` | string | `claude-opus-4-6` |
 | `llm.use_anthropic` | boolean | `true` \| `false` |
 | `mcp_servers.<name>.transport` | string | `stdio`（默认）、`http` 或 `sse` |
+| `mcp_servers.<name>.type` | string | `transport` 的别名，兼容常见 MCP 配置写法 |
 | `mcp_servers.<name>.command` | string | 启动 stdio MCP 服务器的命令 |
 | `mcp_servers.<name>.args` | array | MCP 服务器的命令行参数 |
 | `mcp_servers.<name>.env` | array | 环境变量，`KEY=VALUE` 格式 |
@@ -709,6 +710,8 @@ ocr config set mcp_servers.<name>.setup '<setup command>'
 
 # 添加 streamable HTTP MCP 服务器
 ocr config set mcp_servers.<name>.transport http
+# 也支持用 "type" 作为别名：
+# ocr config set mcp_servers.<name>.type http
 ocr config set mcp_servers.<name>.url https://docs.example.com/mcp
 ocr config set mcp_servers.<name>.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
 ocr config set mcp_servers.<name>.tools '["search_docs","read_doc"]'
@@ -720,6 +723,7 @@ ocr config unset mcp_servers.<name>
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `transport` | 否 | `stdio`（默认）、`http`（streamable HTTP）或 `sse`（旧版 SSE） |
+| `type` | 否 | `transport` 的别名，适合直接复用使用 `type: "http"` 的常见 MCP 配置片段 |
 | `command` | 仅 stdio | 启动 MCP 服务器的可执行命令 |
 | `args` | 否 | 传递给 stdio 服务器的命令行参数 |
 | `env` | 否 | stdio 服务器使用的环境变量，`KEY=VALUE` 格式 |

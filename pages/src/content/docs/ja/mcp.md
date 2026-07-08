@@ -48,6 +48,8 @@ ocr config set mcp_servers.docs.env '["DOCS_TOKEN=secret", "DOCS_REGION=eu"]'
 
 # Streamable HTTP server
 ocr config set mcp_servers.docs.transport http
+# 一般的な MCP config snippet をコピーする場合は "type" alias も使えます：
+# ocr config set mcp_servers.docs.type http
 ocr config set mcp_servers.docs.url https://docs.example.com/mcp
 ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
 
@@ -69,6 +71,7 @@ MCP server はユーザー設定ファイル（`~/.opencodereview/config.json`�
 | フィールド | 型 | 必須 | 説明 |
 |---|---|---|---|
 | `transport` | string | | 既定は `stdio`、`http` は streamable HTTP、`sse` は旧式 SSE。 |
+| `type` | string | | `transport` の alias。`type: "http"` を使う MCP config snippet を流用する場合に便利です。 |
 | `command` | string | stdio のみ | MCP server を起動する実行ファイル（`npx`、`uvx`、絶対パスなど）。 |
 | `args` | string 配列 | | stdio の `command` に渡す引数。 |
 | `env` | string 配列 | | stdio server 用の追加環境変数、`KEY=VALUE` 形式。 |

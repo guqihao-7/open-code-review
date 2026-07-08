@@ -45,6 +45,8 @@ ocr config set mcp_servers.docs.env '["DOCS_TOKEN=secret", "DOCS_REGION=eu"]'
 
 # Streamable HTTP server
 ocr config set mcp_servers.docs.transport http
+# 复制常见 MCP 配置片段时，也可以用 "type" 作为别名：
+# ocr config set mcp_servers.docs.type http
 ocr config set mcp_servers.docs.url https://docs.example.com/mcp
 ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
 
@@ -66,6 +68,7 @@ MCP server 配置在用户配置文件（`~/.opencodereview/config.json`）的 `
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `transport` | string | | 默认为 `stdio`，`http` 表示 streamable HTTP，`sse` 表示旧版 SSE。 |
+| `type` | string | | `transport` 的别名，适合复用使用 `type: "http"` 的 MCP 配置片段。 |
 | `command` | string | 仅 stdio | 启动 MCP server 的可执行文件（如 `npx`、`uvx`、绝对路径）。 |
 | `args` | string 数组 | | 传给 stdio `command` 的参数。 |
 | `env` | string 数组 | | stdio server 的额外环境变量，`KEY=VALUE` 形式。 |

@@ -465,6 +465,30 @@ func TestSetMCPServerValue_Transport(t *testing.T) {
 	}
 }
 
+func TestSetMCPServerValue_TypeAlias(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.type", "http"); err != nil {
+		t.Fatalf("setMCPServerValue: %v", err)
+	}
+	server := cfg.MCPServers["my-server"]
+	if server.Type != "http" {
+		t.Errorf("Type = %q, want %q", server.Type, "http")
+	}
+	if got := server.normalizedTransport(); got != "http" {
+		t.Errorf("normalizedTransport() = %q, want %q", got, "http")
+	}
+}
+
+func TestMCPServerConfig_NormalizedTransportPrefersTransport(t *testing.T) {
+	server := MCPServerConfig{
+		Transport: "sse",
+		Type:      "http",
+	}
+	if got := server.normalizedTransport(); got != "sse" {
+		t.Errorf("normalizedTransport() = %q, want %q", got, "sse")
+	}
+}
+
 func TestSetMCPServerValue_TransportInvalid(t *testing.T) {
 	cfg := &Config{}
 	if err := setMCPServerValue(cfg, "mcp_servers.my-server.transport", "websocket"); err == nil {

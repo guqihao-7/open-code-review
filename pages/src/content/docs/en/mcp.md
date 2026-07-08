@@ -49,6 +49,8 @@ ocr config set mcp_servers.docs.env '["DOCS_TOKEN=secret", "DOCS_REGION=eu"]'
 
 # Streamable HTTP server
 ocr config set mcp_servers.docs.transport http
+# "type" is also accepted as an alias when copying common MCP config snippets:
+# ocr config set mcp_servers.docs.type http
 ocr config set mcp_servers.docs.url https://docs.example.com/mcp
 ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
 
@@ -70,6 +72,7 @@ MCP servers live under the `mcp_servers` key in your user config file (`~/.openc
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `transport` | string | | `stdio` by default, `http` for streamable HTTP, or `sse` for legacy SSE. |
+| `type` | string | | Alias for `transport`, useful when copying MCP config snippets that use `type: "http"`. |
 | `command` | string | stdio only | Executable that starts the MCP server (e.g. `npx`, `uvx`, an absolute path). |
 | `args` | string array | | Arguments passed to the stdio `command`. |
 | `env` | string array | | Extra environment variables in `KEY=VALUE` form for stdio servers. |
