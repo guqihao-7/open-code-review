@@ -551,8 +551,9 @@ func (a *Agent) executeReviewFilter(ctx context.Context, d model.Diff, newPath s
 	rec := fs.AppendTaskRecord(session.ReviewFilterTask, messages)
 	startTime := time.Now()
 
-	_, llmSpan := telemetry.StartLLMSpan(ctx, a.args.Model)
-	resp, err := a.args.LLMClient.CompletionsWithCtx(ctx, llm.ChatRequest{
+	llmCtx, llmSpan := telemetry.StartLLMSpan(ctx, a.args.Model)
+	defer llmSpan.End()
+	resp, err := a.args.LLMClient.CompletionsWithCtx(llmCtx, llm.ChatRequest{
 		Model:     a.args.Model,
 		Messages:  messages,
 		MaxTokens: a.args.Template.MaxTokens,
@@ -560,7 +561,6 @@ func (a *Agent) executeReviewFilter(ctx context.Context, d model.Diff, newPath s
 	duration := time.Since(startTime)
 	if err != nil {
 		telemetry.RecordLLMResult(llmSpan, duration, 0, err)
-		llmSpan.End()
 		rec.SetError(err, duration)
 		fmt.Fprintf(stdout.Writer(), "[ocr] Review filter failed for %s: %v\n", newPath, err)
 		span.SetStatus(codes.Error, err.Error())
@@ -572,7 +572,6 @@ func (a *Agent) executeReviewFilter(ctx context.Context, d model.Diff, newPath s
 		totalTokens = resp.Usage.TotalTokens
 	}
 	telemetry.RecordLLMResult(llmSpan, duration, totalTokens, nil)
-	llmSpan.End()
 	rec.SetResponse(resp, duration)
 	a.runner.RecordUsage(resp.Usage)
 
@@ -774,8 +773,9 @@ func (a *Agent) executePlanPhase(ctx context.Context, newPath, rawDiff, changeFi
 	rec := fs.AppendTaskRecord(session.PlanTask, messages)
 	startTime := time.Now()
 
-	_, llmSpan := telemetry.StartLLMSpan(ctx, a.args.Model)
-	resp, err := a.args.LLMClient.CompletionsWithCtx(ctx, llm.ChatRequest{
+	llmCtx, llmSpan := telemetry.StartLLMSpan(ctx, a.args.Model)
+	defer llmSpan.End()
+	resp, err := a.args.LLMClient.CompletionsWithCtx(llmCtx, llm.ChatRequest{
 		Model:     a.args.Model,
 		Messages:  messages,
 		MaxTokens: a.args.Template.MaxTokens,
@@ -783,7 +783,6 @@ func (a *Agent) executePlanPhase(ctx context.Context, newPath, rawDiff, changeFi
 	duration := time.Since(startTime)
 	if err != nil {
 		telemetry.RecordLLMResult(llmSpan, duration, 0, err)
-		llmSpan.End()
 		rec.SetError(err, duration)
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
@@ -794,7 +793,6 @@ func (a *Agent) executePlanPhase(ctx context.Context, newPath, rawDiff, changeFi
 		totalTokens = resp.Usage.TotalTokens
 	}
 	telemetry.RecordLLMResult(llmSpan, duration, totalTokens, nil)
-	llmSpan.End()
 	rec.SetResponse(resp, duration)
 	a.runner.RecordUsage(resp.Usage)
 	fmt.Fprintf(stdout.Writer(), "[ocr] Plan completed for %s\n", newPath)

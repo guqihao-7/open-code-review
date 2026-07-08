@@ -79,6 +79,8 @@
         /* Task accents — lift dim brand colors for the dark surface */
         --task-main: #58a6ff;
         --task-plan: #d2a8ff;
+        --task-memory: #adbac7;
+        --task-relocation: #f0883e;
         --task-default: #7d8590;
         --tool-name: #d2a8ff;
         --danger: #f85149;

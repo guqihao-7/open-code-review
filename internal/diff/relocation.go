@@ -46,8 +46,8 @@ func ReLocateComment(
 	}
 
 	startTime := time.Now()
-	_, llmSpan := telemetry.StartLLMSpan(ctx, modelName)
-	resp, err := client.CompletionsWithCtx(ctx, llm.ChatRequest{
+	llmCtx, llmSpan := telemetry.StartLLMSpan(ctx, modelName)
+	resp, err := client.CompletionsWithCtx(llmCtx, llm.ChatRequest{
 		Model:     modelName,
 		Messages:  messages,
 		MaxTokens: maxTokens,

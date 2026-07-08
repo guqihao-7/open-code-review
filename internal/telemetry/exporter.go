@@ -49,7 +49,10 @@ func parseOTLPEndpoint(endpoint string) (addr string, insecure bool) {
 // initOTLPProviders dispatches to the gRPC or HTTP exporter based on cfg.OTLPProtocol.
 func initOTLPProviders(ctx context.Context, res *resource.Resource, cfg Config) {
 	switch cfg.OTLPProtocol {
-	case "http/protobuf", "http/json":
+	case "http/protobuf":
+		initOTLPHTTPProviders(ctx, res, cfg)
+	case "http/json":
+		fmt.Fprintf(os.Stderr, "[ocr] WARNING: OTLP protocol %q is not supported by the Go SDK (only protobuf over HTTP); using protobuf\n", cfg.OTLPProtocol)
 		initOTLPHTTPProviders(ctx, res, cfg)
 	case "", "grpc":
 		initOTLPGRPCProviders(ctx, res, cfg)

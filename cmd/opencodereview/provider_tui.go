@@ -920,7 +920,7 @@ func (m providerTUIModel) updateAPIKeyInput(key string, msg tea.KeyPressMsg) (te
 		m.cancelled = true
 		return m, tea.Quit
 	default:
-		if m.apiKeyMasked {
+		if m.apiKeyMasked && len(key) == 1 {
 			m.beginAPIKeyReplace()
 		}
 		var cmd tea.Cmd
@@ -976,7 +976,7 @@ func (m providerTUIModel) updateCustomProviderForm(key string, msg tea.KeyPressM
 			}
 		}
 		if m.cpStep == cpStepAPIKey {
-			if m.apiKeyMasked {
+			if m.apiKeyMasked && len(key) == 1 {
 				m.beginAPIKeyReplace()
 			}
 			var cmd tea.Cmd
@@ -1374,7 +1374,7 @@ func (m providerTUIModel) updateManualForm(key string, msg tea.KeyPressMsg) (tea
 				return m, nil
 			}
 		}
-		if m.manualStep == manualStepAuthToken && m.manualTokenMasked {
+		if m.manualStep == manualStepAuthToken && m.manualTokenMasked && len(key) == 1 {
 			m.beginManualTokenReplace()
 		}
 		return m.passThroughManualInput(msg)
