@@ -685,6 +685,7 @@ OCR 通过四层优先级链解析评审规则。每层采用首次匹配原则�
 | `mcp_servers.<name>.headers` | array | HTTP 头，`Header=Value` 格式；值支持环境变量展开 |
 | `mcp_servers.<name>.tools` | array | 允许使用的工具名称（为空则允许所有工具） |
 | `mcp_servers.<name>.setup` | string | 启动服务器前运行的初始化命令 |
+| `mcp_servers.<name>.timeout_sec` | integer | MCP initialize/list-tools 超时时间（秒），默认 `120` |
 | `mcp_servers.<name>.disable_standalone_sse` | boolean | streamable HTTP 下禁用可选的独立 SSE 流 |
 | `language` | string | 任意语言名称，例如 `English`、`Chinese`（默认：`English`） |
 | `telemetry.enabled` | boolean | `true` \| `false` |
@@ -715,6 +716,7 @@ ocr config set mcp_servers.<name>.transport http
 ocr config set mcp_servers.<name>.url https://docs.example.com/mcp
 ocr config set mcp_servers.<name>.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
 ocr config set mcp_servers.<name>.tools '["search_docs","read_doc"]'
+ocr config set mcp_servers.<name>.timeout_sec 180
 
 # 删除 MCP 服务器
 ocr config unset mcp_servers.<name>
@@ -731,6 +733,7 @@ ocr config unset mcp_servers.<name>
 | `headers` | 否 | HTTP 头，`Header=Value` 格式；值支持 `${DOCS_TOKEN}` 这类环境变量展开 |
 | `tools` | 否 | 允许使用的工具名称；为空则服务器的所有工具均可用 |
 | `setup` | 否 | 启动服务器前运行的 shell 命令（例如构建索引） |
+| `timeout_sec` | 否 | 连接并列出工具的初始化超时时间。默认：`120` 秒 |
 | `disable_standalone_sse` | 否 | streamable HTTP 下跳过可选的独立 SSE 流 |
 
 > **注意：** 如果 MCP 工具的名称与内置工具冲突，该工具将被跳过并输出警告。`setup` 命令的超时时间为 5 分钟。

@@ -49,6 +49,7 @@ ocr config set mcp_servers.docs.transport http
 # ocr config set mcp_servers.docs.type http
 ocr config set mcp_servers.docs.url https://docs.example.com/mcp
 ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
+ocr config set mcp_servers.docs.timeout_sec 180
 
 # 旧版 SSE server
 ocr config set mcp_servers.docs.transport sse
@@ -76,6 +77,7 @@ MCP server 配置在用户配置文件（`~/.opencodereview/config.json`）的 `
 | `headers` | string 数组 | | HTTP 头，`Header=Value` 形式。值支持 `${DOCS_TOKEN}` 这类环境变量展开。 |
 | `tools` | string 数组 | | 要注册的工具名白名单。为空 = 注册该 server 提供的全部工具。 |
 | `setup` | string | | server 启动前运行一次的 shell 命令（如安装依赖）。在仓库根目录运行，超时 5 分钟。 |
+| `timeout_sec` | integer | | 连接并列出工具的初始化超时时间。默认：`120` 秒。 |
 | `disable_standalone_sse` | boolean | | streamable HTTP 下跳过可选的独立 SSE 流。 |
 
 ## 过滤工具
@@ -109,7 +111,7 @@ MCP 工具名与内置工具共享同一个命名空间。如果某个 server �
 的 `--format json` 输出：
 
 - `Running setup for MCP server "x": …` —— 正在执行 setup 命令。
-- `failed to start MCP server "x": …` —— stdio 子进程未在 30 秒初始化超时内连接成功、
+- `failed to start MCP server "x": …` —— stdio 子进程未在初始化超时内连接成功、
   `command` 不在 `PATH` 中，或 HTTP/SSE 端点拒绝了连接或请求头。
 - `tool "y" conflicts with built-in tool, skipping` —— 重命名该 server 的工具，或将其
   从 `tools` 中去掉。

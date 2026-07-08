@@ -53,6 +53,7 @@ ocr config set mcp_servers.docs.transport http
 # ocr config set mcp_servers.docs.type http
 ocr config set mcp_servers.docs.url https://docs.example.com/mcp
 ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
+ocr config set mcp_servers.docs.timeout_sec 180
 
 # Legacy SSE server
 ocr config set mcp_servers.docs.transport sse
@@ -80,6 +81,7 @@ MCP servers live under the `mcp_servers` key in your user config file (`~/.openc
 | `headers` | string array | | HTTP headers in `Header=Value` form. Values support environment expansion such as `${DOCS_TOKEN}`. |
 | `tools` | string array | | Allowlist of tool names to register. Empty = register every tool the server offers. |
 | `setup` | string | | Shell command run once before the server starts (e.g. install deps). Runs in the repo root with a 5-minute timeout. |
+| `timeout_sec` | integer | | Initialization timeout for connecting and listing tools. Default: `120` seconds. |
 | `disable_standalone_sse` | boolean | | For streamable HTTP, skip the optional standalone SSE stream. |
 
 ## Filtering tools
@@ -119,7 +121,7 @@ pollute `--format json` output on stdout:
 
 - `Running setup for MCP server "x": …` — the setup command is executing.
 - `failed to start MCP server "x": …` — the stdio subprocess didn't connect
-  within the 30-second init timeout, `command` isn't on `PATH`, or an HTTP/SSE
+  within the init timeout, `command` isn't on `PATH`, or an HTTP/SSE
   endpoint rejected the connection or headers.
 - `tool "y" conflicts with built-in tool, skipping` — rename the server's
   tool or drop it from `tools`.

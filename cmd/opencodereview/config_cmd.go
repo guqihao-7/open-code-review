@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/open-code-review/open-code-review/internal/llm"
 	"github.com/open-code-review/open-code-review/internal/mcp"
@@ -199,6 +200,8 @@ type ProviderEntry struct {
 	ExtraHeaders map[string]string `json:"extra_headers,omitempty"`
 }
 
+const defaultMCPInitTimeout = 2 * time.Minute
+
 // MCPServerConfig holds configuration for a single MCP server.
 type MCPServerConfig struct {
 	Transport            string   `json:"transport,omitempty"` // "stdio" (default), "http", or "sse"
@@ -210,6 +213,7 @@ type MCPServerConfig struct {
 	Headers              []string `json:"headers,omitempty"`
 	Tools                []string `json:"tools,omitempty"`
 	Setup                string   `json:"setup,omitempty"`
+	TimeoutSec           int      `json:"timeout_sec,omitempty"`
 	DisableStandaloneSSE bool     `json:"disable_standalone_sse,omitempty"`
 }
 
@@ -222,6 +226,13 @@ func (c MCPServerConfig) transportValue() string {
 
 func (c MCPServerConfig) normalizedTransport() string {
 	return mcp.NormalizeTransport(c.transportValue())
+}
+
+func (c MCPServerConfig) initTimeout() time.Duration {
+	if c.TimeoutSec <= 0 {
+		return defaultMCPInitTimeout
+	}
+	return time.Duration(c.TimeoutSec) * time.Second
 }
 
 // Config represents the user-level configuration file (~/.opencodereview/config.json).
@@ -391,7 +402,7 @@ func setConfigValue(cfg *Config, key, value string) error {
 		}
 		cfg.Llm.ExtraBody = m
 	default:
-		return fmt.Errorf("unknown config key: %s\nSupported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, mcp_servers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, llm.extra_headers, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging\nProvider fields: api_key, url, protocol, model, models, auth_header, extra_body, extra_headers\nMCP server fields: transport, type, command, args, env, url, headers, tools, setup, disable_standalone_sse", key)
+		return fmt.Errorf("unknown config key: %s\nSupported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, mcp_servers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, llm.extra_headers, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging\nProvider fields: api_key, url, protocol, model, models, auth_header, extra_body, extra_headers\nMCP server fields: transport, type, command, args, env, url, headers, tools, setup, timeout_sec, disable_standalone_sse", key)
 	}
 	return nil
 }
@@ -626,6 +637,12 @@ func setMCPServerValue(cfg *Config, key, value string) error {
 		entry.Tools = filtered
 	case "setup":
 		entry.Setup = value
+	case "timeout_sec":
+		n, err := strconv.Atoi(value)
+		if err != nil || n <= 0 {
+			return fmt.Errorf("invalid timeout_sec for %s: must be a positive integer", key)
+		}
+		entry.TimeoutSec = n
 	case "disable_standalone_sse":
 		b, err := strconv.ParseBool(value)
 		if err != nil {
@@ -633,7 +650,7 @@ func setMCPServerValue(cfg *Config, key, value string) error {
 		}
 		entry.DisableStandaloneSSE = b
 	default:
-		return fmt.Errorf("unknown MCP server field %q: supported fields are transport, type, command, args, env, url, headers, tools, setup, disable_standalone_sse", field)
+		return fmt.Errorf("unknown MCP server field %q: supported fields are transport, type, command, args, env, url, headers, tools, setup, timeout_sec, disable_standalone_sse", field)
 	}
 
 	cfg.MCPServers[name] = entry

@@ -700,6 +700,7 @@ Config file: `~/.opencodereview/config.json`
 | `mcp_servers.<name>.headers` | array | HTTP headers in `Header=Value` format; values support environment expansion |
 | `mcp_servers.<name>.tools` | array | Allowed tool names (empty = all tools) |
 | `mcp_servers.<name>.setup` | string | Setup command to run before starting the server |
+| `mcp_servers.<name>.timeout_sec` | integer | MCP initialize/list-tools timeout in seconds (default: `120`) |
 | `mcp_servers.<name>.disable_standalone_sse` | boolean | Disable the optional standalone SSE stream for streamable HTTP |
 | `language` | string | Any language name, e.g. `English`, `Chinese` (default: `English`) |
 | `telemetry.enabled` | boolean | `true` \| `false` |
@@ -730,6 +731,7 @@ ocr config set mcp_servers.<name>.transport http
 ocr config set mcp_servers.<name>.url https://docs.example.com/mcp
 ocr config set mcp_servers.<name>.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
 ocr config set mcp_servers.<name>.tools '["search_docs","read_doc"]'
+ocr config set mcp_servers.<name>.timeout_sec 180
 
 # Delete an MCP server
 ocr config unset mcp_servers.<name>
@@ -746,6 +748,7 @@ ocr config unset mcp_servers.<name>
 | `headers` | No | HTTP headers in `Header=Value` format; values support environment expansion such as `${DOCS_TOKEN}` |
 | `tools` | No | Allowed tool names; if empty, all tools from the server are available |
 | `setup` | No | A shell command to run before starting the server (e.g. build an index) |
+| `timeout_sec` | No | Initialization timeout for connecting and listing tools. Default: `120` seconds |
 | `disable_standalone_sse` | No | For streamable HTTP, skip the optional standalone SSE stream |
 
 > **Note:** If an MCP tool's name conflicts with a built-in tool, it will be skipped with a warning. The `setup` command has a 5-minute timeout.

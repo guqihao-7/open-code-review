@@ -52,6 +52,7 @@ ocr config set mcp_servers.docs.transport http
 # ocr config set mcp_servers.docs.type http
 ocr config set mcp_servers.docs.url https://docs.example.com/mcp
 ocr config set mcp_servers.docs.headers '["Authorization=Bearer ${DOCS_TOKEN}"]'
+ocr config set mcp_servers.docs.timeout_sec 180
 
 # 旧式 SSE server
 ocr config set mcp_servers.docs.transport sse
@@ -79,6 +80,7 @@ MCP server はユーザー設定ファイル（`~/.opencodereview/config.json`�
 | `headers` | string 配列 | | HTTP header、`Header=Value` 形式。値は `${DOCS_TOKEN}` のような環境変数展開に対応。 |
 | `tools` | string 配列 | | 登録するツール名の許可リスト。空 = server が提供する全ツールを登録。 |
 | `setup` | string | | server 起動前に一度実行される shell コマンド（依存関係のインストールなど）。リポジトリのルートで実行、タイムアウト 5 分。 |
+| `timeout_sec` | integer | | 接続とツール一覧取得の初期化タイムアウト。既定値：`120` 秒。 |
 | `disable_standalone_sse` | boolean | | streamable HTTP で任意の standalone SSE stream をスキップする。 |
 
 ## ツールのフィルタリング
@@ -115,7 +117,7 @@ server をオンデマンドでインストールまたはビルドするのに�
 stdout の `--format json` 出力を汚染することはありません：
 
 - `Running setup for MCP server "x": …` —— setup コマンドを実行中。
-- `failed to start MCP server "x": …` —— stdio サブプロセスが 30 秒の初期化タイムアウト内に
+- `failed to start MCP server "x": …` —— stdio サブプロセスが初期化タイムアウト内に
   接続できなかった、`command` が `PATH` にない、または HTTP/SSE endpoint が接続や header を拒否した。
 - `tool "y" conflicts with built-in tool, skipping` —— server のツールを改名するか、
   `tools` から外す。

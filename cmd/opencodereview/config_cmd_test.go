@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 func TestSetConfigValueAuthHeaderNormalizesKnownValues(t *testing.T) {
@@ -489,6 +490,16 @@ func TestMCPServerConfig_NormalizedTransportPrefersTransport(t *testing.T) {
 	}
 }
 
+func TestMCPServerConfig_InitTimeout(t *testing.T) {
+	if got := (MCPServerConfig{}).initTimeout(); got != 2*time.Minute {
+		t.Errorf("default initTimeout() = %v, want %v", got, 2*time.Minute)
+	}
+	server := MCPServerConfig{TimeoutSec: 180}
+	if got := server.initTimeout(); got != 180*time.Second {
+		t.Errorf("initTimeout() = %v, want %v", got, 180*time.Second)
+	}
+}
+
 func TestSetMCPServerValue_TransportInvalid(t *testing.T) {
 	cfg := &Config{}
 	if err := setMCPServerValue(cfg, "mcp_servers.my-server.transport", "websocket"); err == nil {
@@ -630,6 +641,23 @@ func TestSetMCPServerValue_DisableStandaloneSSE(t *testing.T) {
 	}
 	if !cfg.MCPServers["my-server"].DisableStandaloneSSE {
 		t.Fatal("DisableStandaloneSSE = false, want true")
+	}
+}
+
+func TestSetMCPServerValue_TimeoutSec(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.timeout_sec", "180"); err != nil {
+		t.Fatalf("setMCPServerValue: %v", err)
+	}
+	if got := cfg.MCPServers["my-server"].TimeoutSec; got != 180 {
+		t.Errorf("TimeoutSec = %d, want %d", got, 180)
+	}
+}
+
+func TestSetMCPServerValue_TimeoutSecInvalid(t *testing.T) {
+	cfg := &Config{}
+	if err := setMCPServerValue(cfg, "mcp_servers.my-server.timeout_sec", "0"); err == nil {
+		t.Fatal("expected error for invalid timeout_sec")
 	}
 }
 

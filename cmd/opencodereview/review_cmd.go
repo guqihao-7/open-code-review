@@ -247,7 +247,7 @@ func initMCPClients(ctx context.Context, cfg *Config, tools *tool.Registry, repo
 			}
 		}
 
-		initCtx, initCancel := context.WithTimeout(ctx, 30*time.Second)
+		initCtx, initCancel := context.WithTimeout(ctx, serverCfg.initTimeout())
 		mc, err := mcp.NewClientWithConfig(initCtx, mcp.ClientConfig{
 			Name:                 name,
 			Transport:            transport,
