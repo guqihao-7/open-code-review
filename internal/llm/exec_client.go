@@ -362,15 +362,14 @@ func normalizeExecArguments(raw json.RawMessage) (string, error) {
 		trimmed = bytes.TrimSpace([]byte(encoded))
 	}
 
-	var object map[string]any
-	if err := json.Unmarshal(trimmed, &object); err != nil {
-		return "", fmt.Errorf("must be a JSON object or a JSON-encoded object string: %w", err)
+	if !json.Valid(trimmed) || len(trimmed) < 2 || trimmed[0] != '{' {
+		return "", fmt.Errorf("must be a JSON object or a JSON-encoded object string")
 	}
-	normalized, err := json.Marshal(object)
-	if err != nil {
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, trimmed); err != nil {
 		return "", err
 	}
-	return string(normalized), nil
+	return compact.String(), nil
 }
 
 func estimateExecUsage(prompt, response string) *UsageInfo {

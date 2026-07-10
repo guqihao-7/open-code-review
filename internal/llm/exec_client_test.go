@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -43,7 +44,7 @@ func TestExecClientMapsToolCalls(t *testing.T) {
 	if calls[0].Function.Name != "code_comment" {
 		t.Errorf("tool name = %q, want code_comment", calls[0].Function.Name)
 	}
-	if calls[0].Function.Arguments != `{"line":7,"path":"main.go"}` {
+	if calls[0].Function.Arguments != `{"path":"main.go","line":7}` {
 		t.Errorf("arguments = %s", calls[0].Function.Arguments)
 	}
 }
@@ -73,6 +74,17 @@ func TestExecClientAcceptsJSONEncodedArguments(t *testing.T) {
 	}
 	if got := resp.ToolCalls()[0].Function.Arguments; got != `{"done":true}` {
 		t.Fatalf("arguments = %s", got)
+	}
+}
+
+func TestNormalizeExecArgumentsPreservesLargeIntegers(t *testing.T) {
+	const input = `{"id":9007199254740993,"nested":{"value":9223372036854775807}}`
+	got, err := normalizeExecArguments(json.RawMessage(input))
+	if err != nil {
+		t.Fatalf("normalizeExecArguments: %v", err)
+	}
+	if got != input {
+		t.Fatalf("arguments = %s, want exact numeric values %s", got, input)
 	}
 }
 
