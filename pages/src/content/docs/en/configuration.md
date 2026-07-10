@@ -60,9 +60,9 @@ environment variable.
 
 ### Custom providers
 
-Any provider name not in the table above is treated as custom and must
-supply at least `url` and `protocol` (`protocol` is either `anthropic` or
-`openai`):
+Any provider name not in the table above is treated as custom. HTTP custom
+providers must supply at least `url` and `protocol` (`protocol` is either
+`anthropic` or `openai`):
 
 ```bash
 ocr config set provider                             my-gateway
@@ -71,6 +71,39 @@ ocr config set custom_providers.my-gateway.protocol openai
 ocr config set custom_providers.my-gateway.model    llama-3-70b
 ocr config set custom_providers.my-gateway.api_key  "$MY_API_KEY"
 ```
+
+### Local CLI subscriptions (`exec` transport)
+
+An exec provider runs a non-interactive local agent CLI and reuses that CLI's
+saved login. It does not require a Base URL or API key.
+
+Codex CLI:
+
+```bash
+ocr config set provider codex-cli
+ocr config set custom_providers.codex-cli.transport exec
+ocr config set custom_providers.codex-cli.command codex
+ocr config set custom_providers.codex-cli.args '["exec","--ephemeral","--sandbox","read-only","--output-schema","{schema_file}","-"]'
+ocr config set custom_providers.codex-cli.model default
+```
+
+Qoder CLI:
+
+```bash
+ocr config set provider qoder-cli
+ocr config set custom_providers.qoder-cli.transport exec
+ocr config set custom_providers.qoder-cli.command qodercli
+ocr config set custom_providers.qoder-cli.args '["-p","--output-format","text","--permission-mode","dont_ask","--attachment","{prompt_file}","Follow the attached OCR request and return only the required JSON object."]'
+ocr config set custom_providers.qoder-cli.model auto
+```
+
+OCR invokes `command` with an argument array and never through a shell. It
+sends the rendered conversation on stdin unless the args use `{prompt_file}`.
+Supported placeholders are `{prompt_file}`, `{schema_file}`, `{model}`, and
+`{cwd}`. Set `timeout_sec` to override the five-minute command timeout and
+`max_concurrency` to control parallel child processes (default `1`). The
+interactive provider form currently configures HTTP providers; use
+`ocr config set` for exec providers.
 
 ### Verify connectivity
 

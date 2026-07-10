@@ -43,6 +43,7 @@ func runLLMTest() error {
 	if err != nil {
 		return fmt.Errorf("resolve LLM endpoint: %w", err)
 	}
+	ep.WorkingDir, _ = os.Getwd()
 
 	task, err := testconnection.LoadDefault()
 	if err != nil {
@@ -84,7 +85,11 @@ func runLLMTest() error {
 		model = resp.Model
 	}
 	fmt.Printf("Source: %s\n", ep.Source)
-	fmt.Printf("URL:    %s\n", ep.URL)
+	if ep.Transport == llm.TransportExec {
+		fmt.Printf("Command: %s\n", ep.Command)
+	} else {
+		fmt.Printf("URL:    %s\n", ep.URL)
+	}
 	fmt.Printf("Model:  %s\n", model)
 
 	content := resp.Content()

@@ -57,8 +57,8 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 
 ### 自定义 provider
 
-任何不在上表中的 provider 名都视为自定义，至少要提供 `url` 和 `protocol`
-（`protocol` 取 `anthropic` 或 `openai`）：
+任何不在上表中的 provider 名都视为自定义。HTTP 自定义 provider 至少要提供
+`url` 和 `protocol`（`protocol` 取 `anthropic` 或 `openai`）：
 
 ```bash
 ocr config set provider                             my-gateway
@@ -67,6 +67,37 @@ ocr config set custom_providers.my-gateway.protocol openai
 ocr config set custom_providers.my-gateway.model    llama-3-70b
 ocr config set custom_providers.my-gateway.api_key  "$MY_API_KEY"
 ```
+
+### 本地 CLI 订阅（`exec` transport）
+
+Exec provider 会运行本地 Agent CLI 的非交互模式，并复用该 CLI 已保存的登录状态，
+不需要 Base URL 或 API Key。
+
+Codex CLI：
+
+```bash
+ocr config set provider codex-cli
+ocr config set custom_providers.codex-cli.transport exec
+ocr config set custom_providers.codex-cli.command codex
+ocr config set custom_providers.codex-cli.args '["exec","--ephemeral","--sandbox","read-only","--output-schema","{schema_file}","-"]'
+ocr config set custom_providers.codex-cli.model default
+```
+
+Qoder CLI：
+
+```bash
+ocr config set provider qoder-cli
+ocr config set custom_providers.qoder-cli.transport exec
+ocr config set custom_providers.qoder-cli.command qodercli
+ocr config set custom_providers.qoder-cli.args '["-p","--output-format","text","--permission-mode","dont_ask","--attachment","{prompt_file}","Follow the attached OCR request and return only the required JSON object."]'
+ocr config set custom_providers.qoder-cli.model auto
+```
+
+OCR 通过参数数组直接执行 `command`，不会经过 shell。默认通过 stdin 发送渲染后的
+完整对话；参数使用 `{prompt_file}` 时会改用临时提示词文件。支持的占位符包括
+`{prompt_file}`、`{schema_file}`、`{model}` 和 `{cwd}`。可用 `timeout_sec`
+覆盖默认五分钟超时，用 `max_concurrency` 控制并行子进程数（默认 `1`）。交互式
+provider 表单目前用于配置 HTTP provider；exec provider 请使用 `ocr config set`。
 
 ### 验证连通性
 

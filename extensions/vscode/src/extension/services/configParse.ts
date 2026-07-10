@@ -12,6 +12,12 @@ function parseProviderEntry(raw: Record<string, unknown> | undefined): ProviderE
     model: typeof raw.model === 'string' ? raw.model : '',
     models,
     authHeader: typeof raw.auth_header === 'string' ? raw.auth_header : '',
+    ...(typeof raw.transport === 'string' ? { transport: raw.transport } : {}),
+    ...(typeof raw.timeout_sec === 'number' ? { timeoutSec: raw.timeout_sec } : {}),
+    ...(typeof raw.command === 'string' ? { command: raw.command } : {}),
+    ...(Array.isArray(raw.args) ? { args: raw.args.filter((arg): arg is string => typeof arg === 'string') } : {}),
+    ...(Array.isArray(raw.env) ? { env: raw.env.filter((item): item is string => typeof item === 'string') } : {}),
+    ...(typeof raw.max_concurrency === 'number' ? { maxConcurrency: raw.max_concurrency } : {}),
   };
 }
 

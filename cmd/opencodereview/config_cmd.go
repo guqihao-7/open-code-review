@@ -188,14 +188,20 @@ func deleteCustomProvider(cfg *Config, name string) (bool, error) {
 
 // ProviderEntry holds per-provider configuration in the providers map.
 type ProviderEntry struct {
-	APIKey       string            `json:"api_key,omitempty"`
-	URL          string            `json:"url,omitempty"`
-	Protocol     string            `json:"protocol,omitempty"`
-	Model        string            `json:"model,omitempty"`
-	Models       []string          `json:"models,omitempty"`
-	AuthHeader   string            `json:"auth_header,omitempty"`
-	ExtraBody    map[string]any    `json:"extra_body,omitempty"`
-	ExtraHeaders map[string]string `json:"extra_headers,omitempty"`
+	Transport      string            `json:"transport,omitempty"`
+	APIKey         string            `json:"api_key,omitempty"`
+	URL            string            `json:"url,omitempty"`
+	Protocol       string            `json:"protocol,omitempty"`
+	Model          string            `json:"model,omitempty"`
+	Models         []string          `json:"models,omitempty"`
+	AuthHeader     string            `json:"auth_header,omitempty"`
+	TimeoutSec     int               `json:"timeout_sec,omitempty"`
+	ExtraBody      map[string]any    `json:"extra_body,omitempty"`
+	ExtraHeaders   map[string]string `json:"extra_headers,omitempty"`
+	Command        string            `json:"command,omitempty"`
+	Args           []string          `json:"args,omitempty"`
+	Env            []string          `json:"env,omitempty"`
+	MaxConcurrency int               `json:"max_concurrency,omitempty"`
 }
 
 // MCPServerConfig holds configuration for a single MCP server (stdio transport).
@@ -374,13 +380,19 @@ func setConfigValue(cfg *Config, key, value string) error {
 		}
 		cfg.Llm.ExtraBody = m
 	default:
-		return fmt.Errorf("unknown config key: %s\nSupported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, mcp_servers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, llm.extra_headers, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging\nProvider fields: api_key, url, protocol, model, models, auth_header, extra_body, extra_headers\nMCP server fields: command, args, env, tools, setup", key)
+		return fmt.Errorf("unknown config key: %s\nSupported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, mcp_servers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, llm.extra_headers, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging\nProvider fields: transport, api_key, url, protocol, model, models, auth_header, timeout_sec, extra_body, extra_headers, command, args, env, max_concurrency\nMCP server fields: command, args, env, tools, setup", key)
 	}
 	return nil
 }
 
 func applyProviderField(entry *ProviderEntry, field, key, value string) error {
 	switch field {
+	case "transport":
+		transport := strings.ToLower(strings.TrimSpace(value))
+		if transport != llm.TransportHTTP && transport != llm.TransportExec {
+			return fmt.Errorf("invalid transport %q: must be \"http\" or \"exec\"", value)
+		}
+		entry.Transport = transport
 	case "api_key":
 		entry.APIKey = value
 	case "url":
@@ -404,6 +416,12 @@ func applyProviderField(entry *ProviderEntry, field, key, value string) error {
 			return err
 		}
 		entry.AuthHeader = normalized
+	case "timeout_sec":
+		seconds, err := strconv.Atoi(value)
+		if err != nil || seconds < 0 {
+			return fmt.Errorf("invalid timeout_sec for %s: must be a non-negative integer", key)
+		}
+		entry.TimeoutSec = seconds
 	case "extra_body":
 		var m map[string]any
 		if err := json.Unmarshal([]byte(value), &m); err != nil {
@@ -416,8 +434,42 @@ func applyProviderField(entry *ProviderEntry, field, key, value string) error {
 			return fmt.Errorf("invalid extra headers for %s: %w", key, err)
 		}
 		entry.ExtraHeaders = parsed
+	case "command":
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("exec command for %s cannot be empty", key)
+		}
+		entry.Command = value
+	case "args":
+		var args []string
+		if err := json.Unmarshal([]byte(value), &args); err != nil {
+			return fmt.Errorf("invalid JSON array for %s: %w", key, err)
+		}
+		for _, arg := range args {
+			if strings.ContainsRune(arg, '\x00') {
+				return fmt.Errorf("invalid argument in %s: NUL bytes are not allowed", key)
+			}
+		}
+		entry.Args = args
+	case "env":
+		var env []string
+		if err := json.Unmarshal([]byte(value), &env); err != nil {
+			return fmt.Errorf("invalid JSON array for %s: %w", key, err)
+		}
+		for _, item := range env {
+			envKey, _, ok := strings.Cut(item, "=")
+			if !ok || envKey == "" || strings.ContainsRune(item, '\x00') {
+				return fmt.Errorf("invalid env entry %q in %s: expected KEY=VALUE", item, key)
+			}
+		}
+		entry.Env = env
+	case "max_concurrency":
+		maxConcurrency, err := strconv.Atoi(value)
+		if err != nil || maxConcurrency < 0 || maxConcurrency > 64 {
+			return fmt.Errorf("invalid max_concurrency for %s: must be between 1 and 64 (or 0 for the default)", key)
+		}
+		entry.MaxConcurrency = maxConcurrency
 	default:
-		return fmt.Errorf("unknown provider field %q: supported fields are api_key, url, protocol, model, models, auth_header, extra_body, extra_headers", field)
+		return fmt.Errorf("unknown provider field %q: supported fields are transport, api_key, url, protocol, model, models, auth_header, timeout_sec, extra_body, extra_headers, command, args, env, max_concurrency", field)
 	}
 	return nil
 }

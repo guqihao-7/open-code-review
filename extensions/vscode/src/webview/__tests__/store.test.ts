@@ -109,6 +109,16 @@ describe('isConfigReady', () => {
       },
     })).toBe(true);
   });
+
+  it('exec provider 只需要 command 和 model', () => {
+    expect(isConfigReady({
+      ...baseConfig,
+      provider: 'codex-cli',
+      customProviders: {
+        'codex-cli': { transport: 'exec', command: 'codex', model: 'default' },
+      },
+    })).toBe(true);
+  });
 });
 
 describe('describeActiveProvider', () => {
@@ -136,6 +146,21 @@ describe('describeActiveProvider', () => {
       displayName: 'my-llm',
       model: 'gpt-4',
       detail: 'https://x',
+    });
+  });
+
+  it('exec provider 展示 command', () => {
+    expect(describeActiveProvider({
+      ...baseConfig,
+      provider: 'qoder-cli',
+      customProviders: {
+        'qoder-cli': { transport: 'exec', command: 'qodercli', model: 'auto' },
+      },
+    })).toMatchObject({
+      kind: 'custom',
+      displayName: 'qoder-cli',
+      model: 'auto',
+      detail: 'qodercli',
     });
   });
 

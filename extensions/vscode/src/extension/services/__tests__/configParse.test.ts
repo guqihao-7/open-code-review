@@ -46,6 +46,32 @@ describe('parseConfig', () => {
     expect(cfg?.providers).toEqual({});
     expect(cfg?.customProviders).toEqual({});
   });
+
+  it('解析 exec provider 字段', () => {
+    const cfg = parseConfig(JSON.stringify({
+      provider: 'codex-cli',
+      custom_providers: {
+        'codex-cli': {
+          transport: 'exec',
+          command: 'codex',
+          args: ['exec', '-'],
+          env: ['CODEX_HOME=/tmp/codex'],
+          model: 'default',
+          timeout_sec: 300,
+          max_concurrency: 1,
+        },
+      },
+    }));
+    expect(cfg?.customProviders['codex-cli']).toMatchObject({
+      transport: 'exec',
+      command: 'codex',
+      args: ['exec', '-'],
+      env: ['CODEX_HOME=/tmp/codex'],
+      model: 'default',
+      timeoutSec: 300,
+      maxConcurrency: 1,
+    });
+  });
 });
 
 describe('toConfigSetArgs', () => {

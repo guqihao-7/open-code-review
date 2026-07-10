@@ -43,12 +43,18 @@ export interface CliResult {
 }
 
 export interface ProviderEntry {
+  transport?: string;
   apiKey?: string;
   url?: string;
   protocol?: string;
   model?: string;
   models?: string[];
   authHeader?: string;
+  timeoutSec?: number;
+  command?: string;
+  args?: string[];
+  env?: string[];
+  maxConcurrency?: number;
 }
 
 export interface OcrConfig {

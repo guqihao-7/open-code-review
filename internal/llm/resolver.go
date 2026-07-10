@@ -14,6 +14,7 @@ import (
 
 // ResolvedEndpoint holds the resolved LLM endpoint configuration.
 type ResolvedEndpoint struct {
+	Transport    string // "http" (default) or "exec"
 	URL          string
 	Token        string
 	Model        string
@@ -27,7 +28,19 @@ type ResolvedEndpoint struct {
 	// tryCCEnv and tryShellRC always leave it at 0 since those sources have no timeout
 	// knob; users can still override via OCR_LLM_TIMEOUT.
 	Timeout time.Duration
+	// Exec transport fields. WorkingDir is supplied by the runtime rather than
+	// persisted in config so commands run against the repository being reviewed.
+	Command        string
+	Args           []string
+	Env            []string
+	MaxConcurrency int
+	WorkingDir     string
 }
+
+const (
+	TransportHTTP = "http"
+	TransportExec = "exec"
+)
 
 // Environment variable names for OCR-specific configuration.
 const (
@@ -52,7 +65,8 @@ const (
 )
 
 // ResolveEndpoint reads from 4 strategy sources in priority order.
-// Each strategy requires all three fields (URL, Token, Model) to be non-empty.
+// HTTP strategies require URL, Token, and Model. Exec providers require a
+// command and Model but intentionally need no URL or API token.
 // Returns the first valid strategy's result.
 func ResolveEndpoint(configPath string) (ResolvedEndpoint, error) {
 	return ResolveEndpointWithModelOverride(configPath, "")
@@ -79,9 +93,12 @@ func ResolveEndpointWithModelOverride(configPath, modelOverride string) (Resolve
 		if err != nil {
 			return ResolvedEndpoint{}, fmt.Errorf("resolve %s: %w", s.name, err)
 		}
-		if ok && ep.URL != "" && ep.Token != "" && ep.Model != "" {
+		if ok && resolvedEndpointReady(ep) {
 			if ep.Source == "" {
 				ep.Source = s.name
+			}
+			if ep.Transport == "" {
+				ep.Transport = TransportHTTP
 			}
 			ep.Model = stripModelSuffix(ep.Model)
 			// OCR_LLM_TIMEOUT is a global override: applies regardless of
@@ -98,7 +115,14 @@ func ResolveEndpointWithModelOverride(configPath, modelOverride string) (Resolve
 		}
 	}
 
-	return ResolvedEndpoint{}, fmt.Errorf("no valid LLM endpoint configured; one of OCR_LLM_URL/OCR_LLM_TOKEN/OCR_LLM_MODEL, ~/.opencodereview/config.json, or ANTHROPIC_BASE_URL/ANTHROPIC_AUTH_TOKEN/ANTHROPIC_MODEL must be set")
+	return ResolvedEndpoint{}, fmt.Errorf("no valid LLM backend configured; configure an HTTP endpoint, an exec provider in ~/.opencodereview/config.json, or ANTHROPIC_BASE_URL/ANTHROPIC_AUTH_TOKEN/ANTHROPIC_MODEL")
+}
+
+func resolvedEndpointReady(ep ResolvedEndpoint) bool {
+	if ep.Transport == TransportExec {
+		return ep.Command != "" && ep.Model != ""
+	}
+	return ep.URL != "" && ep.Token != "" && ep.Model != ""
 }
 
 // parseTimeoutEnv reads and validates the OCR_LLM_TIMEOUT environment variable.
@@ -199,15 +223,20 @@ type llmFileConfig struct {
 
 // providerEntryConfig represents a single provider entry in config.json.
 type providerEntryConfig struct {
-	APIKey       string            `json:"api_key,omitempty"`
-	URL          string            `json:"url,omitempty"`
-	Protocol     string            `json:"protocol,omitempty"`
-	Model        string            `json:"model,omitempty"`
-	Models       []string          `json:"models,omitempty"`
-	AuthHeader   string            `json:"auth_header,omitempty"`
-	TimeoutSec   int               `json:"timeout_sec,omitempty"` // per-request HTTP timeout in seconds
-	ExtraBody    map[string]any    `json:"extra_body,omitempty"`
-	ExtraHeaders map[string]string `json:"extra_headers,omitempty"`
+	Transport      string            `json:"transport,omitempty"`
+	APIKey         string            `json:"api_key,omitempty"`
+	URL            string            `json:"url,omitempty"`
+	Protocol       string            `json:"protocol,omitempty"`
+	Model          string            `json:"model,omitempty"`
+	Models         []string          `json:"models,omitempty"`
+	AuthHeader     string            `json:"auth_header,omitempty"`
+	TimeoutSec     int               `json:"timeout_sec,omitempty"` // per-request HTTP timeout in seconds
+	ExtraBody      map[string]any    `json:"extra_body,omitempty"`
+	ExtraHeaders   map[string]string `json:"extra_headers,omitempty"`
+	Command        string            `json:"command,omitempty"`
+	Args           []string          `json:"args,omitempty"`
+	Env            []string          `json:"env,omitempty"`
+	MaxConcurrency int               `json:"max_concurrency,omitempty"`
 }
 
 type configFile struct {
@@ -259,6 +288,22 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q is set but not configured in %s section", cfg.Provider, section)
 	}
 
+	model, err := resolveProviderModel(cfg, entry, preset, isPreset, modelOverride)
+	if err != nil {
+		return ResolvedEndpoint{}, false, err
+	}
+
+	transport := strings.ToLower(strings.TrimSpace(entry.Transport))
+	if transport == "" {
+		transport = TransportHTTP
+	}
+	if transport == TransportExec {
+		return resolveExecProvider(cfg.Provider, entry, model)
+	}
+	if transport != TransportHTTP {
+		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q has invalid transport %q: must be \"http\" or \"exec\"", cfg.Provider, entry.Transport)
+	}
+
 	apiKey := entry.APIKey
 	if apiKey == "" {
 		if isPreset && preset.EnvVar != "" {
@@ -269,7 +314,7 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q has no api_key configured and no environment variable fallback found", cfg.Provider)
 	}
 
-	var url, protocol, authHeader, model string
+	var url, protocol, authHeader string
 	var extraBody map[string]any
 
 	if isPreset {
@@ -292,39 +337,6 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		}
 		url = entry.URL
 		protocol = strings.ToLower(entry.Protocol)
-	}
-
-	if cfg.Model != "" {
-		model = cfg.Model
-	}
-	if entry.Model != "" {
-		model = entry.Model
-	}
-
-	// Build available model list for validation.
-	var availableModels []string
-	if isPreset {
-		availableModels = append(availableModels, preset.Models...)
-	}
-	availableModels = append(availableModels, entry.Models...)
-
-	// Apply model override with validation.
-	if modelOverride != "" {
-		if len(availableModels) > 0 {
-			if !ModelListContains(availableModels, modelOverride) {
-				return ResolvedEndpoint{}, false, fmt.Errorf(
-					"model %q is not available for provider %q; available models: %s",
-					modelOverride,
-					cfg.Provider,
-					strings.Join(availableModels, ", "),
-				)
-			}
-		}
-		model = modelOverride
-	}
-
-	if model == "" {
-		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q has no model configured; run 'ocr config model' to select one or pass --model", cfg.Provider)
 	}
 
 	if protocol == "anthropic" {
@@ -360,6 +372,7 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 	}
 
 	return ResolvedEndpoint{
+		Transport:    TransportHTTP,
 		URL:          url,
 		Token:        apiKey,
 		Model:        model,
@@ -369,6 +382,79 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		ExtraBody:    extraBody,
 		ExtraHeaders: extraHeaders,
 		Timeout:      timeout,
+	}, true, nil
+}
+
+func resolveProviderModel(cfg configFile, entry providerEntryConfig, preset Provider, isPreset bool, modelOverride string) (string, error) {
+	model := cfg.Model
+	if entry.Model != "" {
+		model = entry.Model
+	}
+
+	var availableModels []string
+	if isPreset {
+		availableModels = append(availableModels, preset.Models...)
+	}
+	availableModels = append(availableModels, entry.Models...)
+
+	if modelOverride != "" {
+		if len(availableModels) > 0 && !ModelListContains(availableModels, modelOverride) {
+			return "", fmt.Errorf(
+				"model %q is not available for provider %q; available models: %s",
+				modelOverride,
+				cfg.Provider,
+				strings.Join(availableModels, ", "),
+			)
+		}
+		model = modelOverride
+	}
+
+	if model == "" {
+		return "", fmt.Errorf("provider %q has no model configured; run 'ocr config model' to select one or pass --model", cfg.Provider)
+	}
+	return model, nil
+}
+
+func resolveExecProvider(providerName string, entry providerEntryConfig, model string) (ResolvedEndpoint, bool, error) {
+	command := strings.TrimSpace(entry.Command)
+	if command == "" {
+		return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q requires a command", providerName)
+	}
+	if strings.ContainsRune(command, '\x00') {
+		return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q command contains a NUL byte", providerName)
+	}
+	for _, arg := range entry.Args {
+		if strings.ContainsRune(arg, '\x00') {
+			return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q argument contains a NUL byte", providerName)
+		}
+	}
+	for _, env := range entry.Env {
+		key, _, ok := strings.Cut(env, "=")
+		if !ok || key == "" || strings.ContainsRune(env, '\x00') {
+			return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q has invalid env entry %q: expected KEY=VALUE", providerName, env)
+		}
+	}
+	if entry.MaxConcurrency < 0 || entry.MaxConcurrency > 64 {
+		return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q max_concurrency must be between 1 and 64 (or 0 for the default)", providerName)
+	}
+	maxConcurrency := entry.MaxConcurrency
+	if maxConcurrency == 0 {
+		maxConcurrency = 1
+	}
+	timeout, err := validateTimeoutSec(entry.TimeoutSec)
+	if err != nil {
+		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q: %w", providerName, err)
+	}
+
+	return ResolvedEndpoint{
+		Transport:      TransportExec,
+		Model:          model,
+		Source:         "provider:" + providerName,
+		Timeout:        timeout,
+		Command:        command,
+		Args:           append([]string(nil), entry.Args...),
+		Env:            append([]string(nil), entry.Env...),
+		MaxConcurrency: maxConcurrency,
 	}, true, nil
 }
 

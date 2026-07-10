@@ -316,6 +316,13 @@ Examples:
   ocr config set custom_providers.my-gateway.models '["llama-3-70b","llama-3-8b"]'
   ocr config set custom_providers.my-gateway.api_key "$MY_API_KEY"
 
+  # Local CLI subscription (exec transport)
+  ocr config set provider codex-cli
+  ocr config set custom_providers.codex-cli.transport exec
+  ocr config set custom_providers.codex-cli.command codex
+  ocr config set custom_providers.codex-cli.args '["exec","--ephemeral","--sandbox","read-only","--output-schema","{schema_file}","-"]'
+  ocr config set custom_providers.codex-cli.model default
+
   # Delete a custom provider
   ocr config unset custom_providers.my-gateway
 
@@ -337,6 +344,6 @@ Examples:
   ocr config set telemetry.enabled true
 
 Supported keys: provider, model, providers.<name>.<field>, custom_providers.<name>.<field>, mcp_servers.<name>.<field>, llm.url, llm.auth_token, llm.auth_header, llm.model, llm.use_anthropic, llm.extra_body, llm.extra_headers, language, telemetry.enabled, telemetry.exporter, telemetry.otlp_endpoint, telemetry.content_logging
-Provider fields: api_key, url, protocol, model, models, auth_header, extra_body, extra_headers
+Provider fields: transport, api_key, url, protocol, model, models, auth_header, timeout_sec, extra_body, extra_headers, command, args, env, max_concurrency
 MCP server fields: command, args, env, tools, setup`)
 }

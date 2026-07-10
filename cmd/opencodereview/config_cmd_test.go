@@ -828,6 +828,58 @@ func TestSetConfigValueUnknownKey(t *testing.T) {
 	}
 }
 
+func TestSetConfigValueExecProviderFields(t *testing.T) {
+	cfg := &Config{}
+	values := []struct {
+		field string
+		value string
+	}{
+		{"transport", "exec"},
+		{"command", "codex"},
+		{"args", `["exec","--output-schema","{schema_file}","-"]`},
+		{"env", `["CODEX_HOME=/tmp/codex"]`},
+		{"model", "default"},
+		{"timeout_sec", "90"},
+		{"max_concurrency", "2"},
+	}
+	for _, item := range values {
+		key := "custom_providers.codex-cli." + item.field
+		if err := setConfigValue(cfg, key, item.value); err != nil {
+			t.Fatalf("setConfigValue(%q): %v", key, err)
+		}
+	}
+
+	entry := cfg.CustomProviders["codex-cli"]
+	if entry.Transport != "exec" || entry.Command != "codex" || entry.Model != "default" {
+		t.Fatalf("exec provider = %#v", entry)
+	}
+	if len(entry.Args) != 4 || len(entry.Env) != 1 || entry.TimeoutSec != 90 || entry.MaxConcurrency != 2 {
+		t.Fatalf("exec provider options = %#v", entry)
+	}
+}
+
+func TestSetConfigValueRejectsInvalidExecProviderFields(t *testing.T) {
+	tests := []struct {
+		field string
+		value string
+	}{
+		{"transport", "shell"},
+		{"command", "   "},
+		{"args", "not-json"},
+		{"env", `["INVALID"]`},
+		{"timeout_sec", "-1"},
+		{"max_concurrency", "65"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.field, func(t *testing.T) {
+			cfg := &Config{}
+			if err := setConfigValue(cfg, "custom_providers.cli."+tt.field, tt.value); err == nil {
+				t.Fatalf("expected error for %s=%q", tt.field, tt.value)
+			}
+		})
+	}
+}
+
 func TestSetConfigValueProviderClearsModel(t *testing.T) {
 	cfg := &Config{Provider: "old-provider", Model: "old-model"}
 	if err := setConfigValue(cfg, "provider", "new-provider"); err != nil {

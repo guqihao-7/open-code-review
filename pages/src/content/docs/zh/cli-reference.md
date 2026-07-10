@@ -373,13 +373,14 @@ ocr llm test
 
 ```
 Source: <which strategy was used>
-URL:    <endpoint URL>
+URL:    <endpoint URL>       # HTTP transport
+# or: Command: <local CLI>   # exec transport
 Model:  <effective model>
 <the model's reply>
 ✓ Connection test successful
 ```
 
-非零退出意味着端点未完整配置，或请求失败（网络 / 鉴权 / 模型错误）。错误信息
+非零退出意味着后端未完整配置，或请求失败（网络 / 鉴权 / CLI / 模型错误）。错误信息
 会指明具体是哪一种。
 
 ### `ocr llm providers`

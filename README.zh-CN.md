@@ -221,6 +221,26 @@ ocr config set custom_providers.my-gateway.model gpt-4o
 
 > 自定义供应商的 `url` 和 `protocol` 为必填项。`protocol` 支持 `anthropic` 和 `openai` 两种。
 
+使用本地 Agent CLI 订阅而不是 HTTP API：
+
+```bash
+# Codex CLI（复用现有的 `codex login` 登录状态）
+ocr config set provider codex-cli
+ocr config set custom_providers.codex-cli.transport exec
+ocr config set custom_providers.codex-cli.command codex
+ocr config set custom_providers.codex-cli.args '["exec","--ephemeral","--sandbox","read-only","--output-schema","{schema_file}","-"]'
+ocr config set custom_providers.codex-cli.model default
+
+# Qoder CLI（复用现有的 qodercli 登录状态）
+ocr config set provider qoder-cli
+ocr config set custom_providers.qoder-cli.transport exec
+ocr config set custom_providers.qoder-cli.command qodercli
+ocr config set custom_providers.qoder-cli.args '["-p","--output-format","text","--permission-mode","dont_ask","--attachment","{prompt_file}","Follow the attached OCR request and return only the required JSON object."]'
+ocr config set custom_providers.qoder-cli.model auto
+```
+
+Exec provider 会直接执行配置的命令，不经过 shell，因此不需要 `url` 或 `api_key`。默认情况下 OCR 通过 stdin 发送完整对话；`{prompt_file}` 会改用临时提示词文件，`{schema_file}`、`{model}` 和 `{cwd}` 分别替换为生成的响应 Schema、所选模型和评审工作目录。`max_concurrency` 默认为 `1`，避免同时启动过多使用订阅额度的 CLI 会话。Exec provider 目前通过 `ocr config set` 配置；交互式 provider 表单仍用于 HTTP provider。
+
 可选配置项：
 
 | 键 | 描述 |
@@ -229,6 +249,8 @@ ocr config set custom_providers.my-gateway.model gpt-4o
 | `providers.<name>.extra_body` | 合并到请求体的自定义 JSON 字段 |
 | `providers.<name>.extra_headers` | 逗号分隔的 `key=value` 键值对，为每个请求添加自定义 HTTP 头 |
 | `providers.<name>.models` | 用于交互式选择的模型列表 |
+| `custom_providers.<name>.timeout_sec` | 单次命令超时秒数（默认 300） |
+| `custom_providers.<name>.max_concurrency` | 同时运行的 CLI 进程上限（默认 1） |
 
 **`extra_headers`（可选）：** 为每个 LLM API 请求添加自定义 HTTP 头。适用于代理、网关或需要额外头的企业端点（例如组织 ID、链路追踪 ID）。格式为逗号分隔的 `key=value` 键值对。包含逗号的值请用双引号包裹：
 

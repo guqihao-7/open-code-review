@@ -221,6 +221,26 @@ ocr config set custom_providers.my-gateway.model gpt-4o
 
 > `url` and `protocol` are required for custom providers. Supported protocols: `anthropic`, `openai`.
 
+Using a local agent CLI subscription instead of an HTTP API:
+
+```bash
+# Codex CLI (reuses the existing `codex login` session)
+ocr config set provider codex-cli
+ocr config set custom_providers.codex-cli.transport exec
+ocr config set custom_providers.codex-cli.command codex
+ocr config set custom_providers.codex-cli.args '["exec","--ephemeral","--sandbox","read-only","--output-schema","{schema_file}","-"]'
+ocr config set custom_providers.codex-cli.model default
+
+# Qoder CLI (reuses the existing qodercli login session)
+ocr config set provider qoder-cli
+ocr config set custom_providers.qoder-cli.transport exec
+ocr config set custom_providers.qoder-cli.command qodercli
+ocr config set custom_providers.qoder-cli.args '["-p","--output-format","text","--permission-mode","dont_ask","--attachment","{prompt_file}","Follow the attached OCR request and return only the required JSON object."]'
+ocr config set custom_providers.qoder-cli.model auto
+```
+
+Exec providers invoke the configured command directly, without a shell, and therefore need no `url` or `api_key`. OCR sends the full conversation on stdin by default. `{prompt_file}` switches to a temporary prompt file, while `{schema_file}`, `{model}`, and `{cwd}` are replaced with a generated response schema, the selected model, and the review working directory. The default `max_concurrency` is `1` to avoid starting too many subscription-backed CLI sessions. Exec providers are currently configured through `ocr config set`; the interactive provider form is for HTTP providers.
+
 Optional settings:
 
 | Key | Description |
@@ -229,6 +249,8 @@ Optional settings:
 | `providers.<name>.extra_body` | Custom JSON fields merged into the request body |
 | `providers.<name>.extra_headers` | Comma-separated `key=value` pairs of custom HTTP headers added to every request |
 | `providers.<name>.models` | Model list for interactive selection |
+| `custom_providers.<name>.timeout_sec` | Per-command timeout in seconds (default: 300) |
+| `custom_providers.<name>.max_concurrency` | Maximum simultaneous CLI processes (default: 1) |
 
 **`extra_headers` (optional):** Adds custom HTTP headers to every LLM API request. Useful for proxies, gateways, or enterprise endpoints that require additional headers (e.g. organization IDs, tracing IDs). Format is comma-separated `key=value` pairs. Double-quote values that contain commas:
 

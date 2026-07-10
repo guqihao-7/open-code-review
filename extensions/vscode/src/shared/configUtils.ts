@@ -57,7 +57,7 @@ export function describeActiveProvider(config: OcrConfig | null): ActiveProvider
       name: config.provider,
       displayName: config.provider,
       model: entry.model,
-      detail: entry.url,
+      detail: entry.transport === 'exec' ? entry.command : entry.url,
     };
   }
 
@@ -85,6 +85,7 @@ export function isConfigReady(config: OcrConfig | null): boolean {
       : config.customProviders[config.provider];
     if (!entry?.model) return false;
     if (preset) return true;
+    if (entry.transport === 'exec') return Boolean(entry.command);
     return Boolean(entry.url && entry.protocol && entry.apiKey);
   }
 

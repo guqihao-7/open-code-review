@@ -387,18 +387,19 @@ ocr llm test
 Resolves the LLM endpoint exactly the way `ocr review` does, sends a single
 canned chat request from
 [`internal/config/testconnection/task.json`](https://github.com/alibaba/open-code-review/blob/main/internal/config/testconnection/task.json),
-and prints:
+and prints the HTTP URL or exec command, effective model, and reply:
 
 ```
 Source: <which strategy was used>
-URL:    <endpoint URL>
+URL:    <endpoint URL>       # HTTP transport
+# or: Command: <local CLI>   # exec transport
 Model:  <effective model>
 <the model's reply>
 ✓ Connection test successful
 ```
 
-A non-zero exit means either the endpoint isn't fully configured or the
-request failed (network / auth / model error). The error message tells you
+A non-zero exit means either the backend isn't fully configured or the
+request failed (network / auth / CLI / model error). The error message tells you
 which.
 
 ### `ocr llm providers`

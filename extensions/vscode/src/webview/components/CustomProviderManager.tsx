@@ -50,14 +50,18 @@ export function CustomProviderManager({ config, onAdd, onEdit, onActivate, onDel
                     {isActive && <span class="custom-provider-badge">{t('cmp.custom.currentUse')}</span>}
                   </div>
                   <div class="custom-provider-card-meta">
-                    <span>{entry.protocol || '—'}</span>
+                    <span>{entry.transport === 'exec' ? 'exec' : (entry.protocol || '—')}</span>
                     <span class="custom-provider-card-dot">·</span>
-                    <span class="custom-provider-card-url" title={entry.url}>{entry.url || '—'}</span>
+                    <span class="custom-provider-card-url" title={entry.transport === 'exec' ? entry.command : entry.url}>
+                      {entry.transport === 'exec' ? (entry.command || '—') : (entry.url || '—')}
+                    </span>
                   </div>
                   <div class="custom-provider-card-model">{t('cmp.custom.model')}: {formatModels(entry)}</div>
                 </div>
                 <div class="custom-provider-card-actions">
-                  <button type="button" class="btn-text" onClick={() => onEdit(name)}>{t('cmp.custom.edit')}</button>
+                  {entry.transport !== 'exec' && (
+                    <button type="button" class="btn-text" onClick={() => onEdit(name)}>{t('cmp.custom.edit')}</button>
+                  )}
                   {!isActive && (
                     <button type="button" class="btn-text" onClick={() => onActivate(name)}>{t('cmp.custom.setCurrent')}</button>
                   )}

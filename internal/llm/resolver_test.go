@@ -1518,3 +1518,102 @@ func TestResolveEndpoint_NegativeEnvTimeoutWithConfig(t *testing.T) {
 		t.Errorf("error %q should mention OCR_LLM_TIMEOUT", err.Error())
 	}
 }
+
+func TestResolveEndpoint_ExecProviderNeedsNoURLOrAPIKey(t *testing.T) {
+	clearAllEnv(t)
+
+	cfg := configFile{
+		Provider: "codex-cli",
+		CustomProviders: map[string]providerEntryConfig{
+			"codex-cli": {
+				Transport:      TransportExec,
+				Command:        "codex",
+				Args:           []string{"exec", "--output-schema", execSchemaFileToken, "-"},
+				Env:            []string{"CODEX_HOME=/tmp/codex-home"},
+				Model:          "default",
+				TimeoutSec:     90,
+				MaxConcurrency: 2,
+			},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	ep, err := ResolveEndpoint(cfgPath)
+	if err != nil {
+		t.Fatalf("ResolveEndpoint: %v", err)
+	}
+	if ep.Transport != TransportExec || ep.Command != "codex" {
+		t.Fatalf("resolved exec endpoint = %#v", ep)
+	}
+	if ep.URL != "" || ep.Token != "" {
+		t.Fatalf("exec endpoint unexpectedly requires HTTP credentials: URL=%q Token=%q", ep.URL, ep.Token)
+	}
+	if ep.Model != "default" || ep.Timeout != 90*time.Second || ep.MaxConcurrency != 2 {
+		t.Fatalf("resolved exec settings = %#v", ep)
+	}
+	if len(ep.Args) != 4 || len(ep.Env) != 1 {
+		t.Fatalf("resolved args/env = %#v / %#v", ep.Args, ep.Env)
+	}
+	if _, ok := NewLLMClient(ep).(*ExecClient); !ok {
+		t.Fatalf("NewLLMClient(%#v) did not return *ExecClient", ep)
+	}
+}
+
+func TestResolveEndpoint_ExecProviderDefaultsConcurrency(t *testing.T) {
+	clearAllEnv(t)
+	cfg := configFile{
+		Provider: "qoder-cli",
+		CustomProviders: map[string]providerEntryConfig{
+			"qoder-cli": {Transport: TransportExec, Command: "qodercli", Model: "auto"},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ep, err := ResolveEndpoint(cfgPath)
+	if err != nil {
+		t.Fatalf("ResolveEndpoint: %v", err)
+	}
+	if ep.MaxConcurrency != 1 {
+		t.Fatalf("MaxConcurrency = %d, want 1", ep.MaxConcurrency)
+	}
+}
+
+func TestResolveEndpoint_ExecProviderValidation(t *testing.T) {
+	tests := []struct {
+		name  string
+		entry providerEntryConfig
+		want  string
+	}{
+		{name: "missing command", entry: providerEntryConfig{Transport: TransportExec, Model: "default"}, want: "requires a command"},
+		{name: "missing model", entry: providerEntryConfig{Transport: TransportExec, Command: "codex"}, want: "has no model configured"},
+		{name: "bad env", entry: providerEntryConfig{Transport: TransportExec, Command: "codex", Model: "default", Env: []string{"INVALID"}}, want: "invalid env entry"},
+		{name: "bad concurrency", entry: providerEntryConfig{Transport: TransportExec, Command: "codex", Model: "default", MaxConcurrency: 65}, want: "max_concurrency"},
+		{name: "bad transport", entry: providerEntryConfig{Transport: "shell", Command: "codex", Model: "default"}, want: "invalid transport"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clearAllEnv(t)
+			cfg := configFile{
+				Provider:        "cli",
+				CustomProviders: map[string]providerEntryConfig{"cli": tt.entry},
+			}
+			data, _ := json.Marshal(cfg)
+			cfgPath := filepath.Join(t.TempDir(), "config.json")
+			if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			_, err := ResolveEndpoint(cfgPath)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want substring %q", err, tt.want)
+			}
+		})
+	}
+}
