@@ -239,7 +239,7 @@ ocr config set custom_providers.qoder-cli.args '["-p","--output-format","text","
 ocr config set custom_providers.qoder-cli.model auto
 ```
 
-Exec providers invoke the configured command directly, without a shell, and therefore need no `url` or `api_key`. OCR sends the full conversation on stdin by default. `{prompt_file}` switches to a temporary prompt file, while `{schema_file}`, `{model}`, and `{cwd}` are replaced with a generated response schema, the selected model, and the review working directory. The default `max_concurrency` is `1` to avoid starting too many subscription-backed CLI sessions. Exec providers are currently configured through `ocr config set`; the interactive provider form is for HTTP providers.
+Exec providers invoke the configured command directly, without a shell, and therefore need no `url` or `api_key`. OCR sends the full conversation on stdin by default. `{prompt_file}` switches to a temporary prompt file, while `{schema_file}`, `{model}`, and `{cwd}` are replaced with a generated response schema, the selected model, and the review working directory. Add the `{model}` placeholder to `args` when `ocr review --model ...` must override the CLI model; otherwise the configured model is only OCR's label for the CLI default. The default `max_concurrency` is `1` to avoid starting too many subscription-backed CLI sessions. Exec providers are currently configured through `ocr config set`; the interactive provider form is for HTTP providers.
 
 Optional settings:
 

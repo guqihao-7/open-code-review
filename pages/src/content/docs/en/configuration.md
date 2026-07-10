@@ -100,7 +100,9 @@ ocr config set custom_providers.qoder-cli.model auto
 OCR invokes `command` with an argument array and never through a shell. It
 sends the rendered conversation on stdin unless the args use `{prompt_file}`.
 Supported placeholders are `{prompt_file}`, `{schema_file}`, `{model}`, and
-`{cwd}`. Set `timeout_sec` to override the five-minute command timeout and
+`{cwd}`. Include `{model}` in `args` when `ocr review --model ...` should
+override the CLI model; without it, `model` is an OCR label for the CLI's own
+default. Set `timeout_sec` to override the five-minute command timeout and
 `max_concurrency` to control parallel child processes (default `1`). The
 interactive provider form currently configures HTTP providers; use
 `ocr config set` for exec providers.

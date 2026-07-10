@@ -298,7 +298,7 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		transport = TransportHTTP
 	}
 	if transport == TransportExec {
-		return resolveExecProvider(cfg.Provider, entry, model)
+		return resolveExecProvider(cfg.Provider, entry, model, modelOverride != "")
 	}
 	if transport != TransportHTTP {
 		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q has invalid transport %q: must be \"http\" or \"exec\"", cfg.Provider, entry.Transport)
@@ -415,7 +415,7 @@ func resolveProviderModel(cfg configFile, entry providerEntryConfig, preset Prov
 	return model, nil
 }
 
-func resolveExecProvider(providerName string, entry providerEntryConfig, model string) (ResolvedEndpoint, bool, error) {
+func resolveExecProvider(providerName string, entry providerEntryConfig, model string, hasModelOverride bool) (ResolvedEndpoint, bool, error) {
 	command := strings.TrimSpace(entry.Command)
 	if command == "" {
 		return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q requires a command", providerName)
@@ -427,6 +427,9 @@ func resolveExecProvider(providerName string, entry providerEntryConfig, model s
 		if strings.ContainsRune(arg, '\x00') {
 			return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q argument contains a NUL byte", providerName)
 		}
+	}
+	if hasModelOverride && !argsContain(entry.Args, execModelToken) {
+		return ResolvedEndpoint{}, false, fmt.Errorf("exec provider %q cannot apply --model because args do not contain the %s placeholder", providerName, execModelToken)
 	}
 	for _, env := range entry.Env {
 		key, _, ok := strings.Cut(env, "=")

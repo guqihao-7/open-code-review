@@ -239,7 +239,7 @@ ocr config set custom_providers.qoder-cli.args '["-p","--output-format","text","
 ocr config set custom_providers.qoder-cli.model auto
 ```
 
-Exec provider 会直接执行配置的命令，不经过 shell，因此不需要 `url` 或 `api_key`。默认情况下 OCR 通过 stdin 发送完整对话；`{prompt_file}` 会改用临时提示词文件，`{schema_file}`、`{model}` 和 `{cwd}` 分别替换为生成的响应 Schema、所选模型和评审工作目录。`max_concurrency` 默认为 `1`，避免同时启动过多使用订阅额度的 CLI 会话。Exec provider 目前通过 `ocr config set` 配置；交互式 provider 表单仍用于 HTTP provider。
+Exec provider 会直接执行配置的命令，不经过 shell，因此不需要 `url` 或 `api_key`。默认情况下 OCR 通过 stdin 发送完整对话；`{prompt_file}` 会改用临时提示词文件，`{schema_file}`、`{model}` 和 `{cwd}` 分别替换为生成的响应 Schema、所选模型和评审工作目录。如果希望 `ocr review --model ...` 覆盖 CLI 模型，需要在 `args` 中加入 `{model}` 占位符；否则配置的 model 只是 OCR 对 CLI 默认模型的标签。`max_concurrency` 默认为 `1`，避免同时启动过多使用订阅额度的 CLI 会话。Exec provider 目前通过 `ocr config set` 配置；交互式 provider 表单仍用于 HTTP provider。
 
 可选配置项：
 

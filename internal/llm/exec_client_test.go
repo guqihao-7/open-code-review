@@ -84,6 +84,14 @@ func TestExecClientRejectsMalformedOutput(t *testing.T) {
 	}
 }
 
+func TestExecClientRejectsMissingRequiredFields(t *testing.T) {
+	client := newExecHelperClient(t, "missing-fields")
+	_, err := client.CompletionsWithCtx(context.Background(), ChatRequest{Model: "m"})
+	if err == nil || !strings.Contains(err.Error(), "missing required field") {
+		t.Fatalf("error = %v, want missing required field", err)
+	}
+}
+
 func TestExecClientReportsCommandFailureWithoutMixingStderr(t *testing.T) {
 	client := newExecHelperClient(t, "failure")
 	_, err := client.CompletionsWithCtx(context.Background(), ChatRequest{Model: "m"})
@@ -172,6 +180,8 @@ func TestExecHelperProcess(t *testing.T) {
 		fmt.Print(`{"content":"","tool_calls":[{"id":"call-1","name":"task_done","arguments":"{\"done\":true}"}]}`)
 	case "malformed":
 		fmt.Print("not-json")
+	case "missing-fields":
+		fmt.Print(`{"content":"no tool_calls"}`)
 	case "failure":
 		fmt.Fprint(os.Stderr, "helper failure")
 		os.Exit(7)

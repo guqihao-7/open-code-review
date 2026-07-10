@@ -1585,6 +1585,40 @@ func TestResolveEndpoint_ExecProviderDefaultsConcurrency(t *testing.T) {
 	}
 }
 
+func TestResolveEndpoint_ExecProviderModelOverrideRequiresPlaceholder(t *testing.T) {
+	clearAllEnv(t)
+	cfg := configFile{
+		Provider: "codex-cli",
+		CustomProviders: map[string]providerEntryConfig{
+			"codex-cli": {Transport: TransportExec, Command: "codex", Args: []string{"exec", "-"}, Model: "default"},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ResolveEndpointWithModelOverride(cfgPath, "gpt-test")
+	if err == nil || !strings.Contains(err.Error(), execModelToken) {
+		t.Fatalf("error = %v, want missing model placeholder", err)
+	}
+
+	entry := cfg.CustomProviders["codex-cli"]
+	entry.Args = []string{"exec", "--model", execModelToken, "-"}
+	cfg.CustomProviders["codex-cli"] = entry
+	data, _ = json.Marshal(cfg)
+	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ep, err := ResolveEndpointWithModelOverride(cfgPath, "gpt-test")
+	if err != nil {
+		t.Fatalf("ResolveEndpointWithModelOverride: %v", err)
+	}
+	if ep.Model != "gpt-test" {
+		t.Fatalf("Model = %q, want gpt-test", ep.Model)
+	}
+}
+
 func TestResolveEndpoint_ExecProviderValidation(t *testing.T) {
 	tests := []struct {
 		name  string

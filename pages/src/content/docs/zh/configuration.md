@@ -95,8 +95,10 @@ ocr config set custom_providers.qoder-cli.model auto
 
 OCR 通过参数数组直接执行 `command`，不会经过 shell。默认通过 stdin 发送渲染后的
 完整对话；参数使用 `{prompt_file}` 时会改用临时提示词文件。支持的占位符包括
-`{prompt_file}`、`{schema_file}`、`{model}` 和 `{cwd}`。可用 `timeout_sec`
-覆盖默认五分钟超时，用 `max_concurrency` 控制并行子进程数（默认 `1`）。交互式
+`{prompt_file}`、`{schema_file}`、`{model}` 和 `{cwd}`。如果需要让
+`ocr review --model ...` 覆盖 CLI 模型，应在 `args` 中加入 `{model}`；否则
+`model` 只是 OCR 对 CLI 自身默认模型的标签。可用 `timeout_sec` 覆盖默认五分钟
+超时，用 `max_concurrency` 控制并行子进程数（默认 `1`）。交互式
 provider 表单目前用于配置 HTTP provider；exec provider 请使用 `ocr config set`。
 
 ### 验证连通性

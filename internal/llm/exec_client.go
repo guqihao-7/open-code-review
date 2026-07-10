@@ -331,8 +331,19 @@ func decodeExecResponse(stdout string) (execResponse, string, error) {
 		}
 		raw = candidate
 	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(raw), &fields); err != nil {
+		return execResponse{}, raw, err
+	}
+	if _, ok := fields["content"]; !ok {
+		return execResponse{}, raw, fmt.Errorf("missing required field %q", "content")
+	}
+	if _, ok := fields["tool_calls"]; !ok {
+		return execResponse{}, raw, fmt.Errorf("missing required field %q", "tool_calls")
+	}
 	if response.ToolCalls == nil {
-		response.ToolCalls = []execToolCallWire{}
+		return execResponse{}, raw, fmt.Errorf("field %q must be an array", "tool_calls")
 	}
 	return response, raw, nil
 }
